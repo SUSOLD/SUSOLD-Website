@@ -1,2 +1,2 @@
 # SUSOLD-Website
-Online Second Hand Store for the members of Sabancı University
+Online Second Hand Store for the Members of Sabancı University
