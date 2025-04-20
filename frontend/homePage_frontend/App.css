@@ -1,0 +1,107 @@
+body {
+  background-color: #ffe6ea; /* Light pastel pink */
+  color: #222;
+}
+
+h1, h2, h3 {
+  color: #222;
+  font-weight: 600;
+}
+
+h2 {
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #222;
+  padding-bottom: 0.5rem;
+  display: inline-block;
+}
+
+.filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 1rem;
+}
+
+.filter-header svg {
+  font-size: 1.25rem;
+}
+
+aside {
+  background-color: #fff;
+  border: 2px solid #f1c8cf;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+aside label {
+  font-weight: 500;
+  color: #444;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+aside select,
+aside input[type="checkbox"] {
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.product-card {
+  background: #fff;
+  border: 2px solid #f7d6db;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: 0.2s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.product-card .info {
+  padding: 1rem;
+}
+
+.product-card .info h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.product-card .info p {
+  font-size: 0.95rem;
+  margin: 0.25rem 0;
+}
+
+.product-card .info span {
+  font-size: 0.85rem;
+  color: #777;
+}
+
+.product-card {
+  width: 160px;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.25rem; /* Add spacing between elements instead of padding everywhere */
+}
+
+.product-card .info {
+  padding: 0.25rem; /* reduce internal padding */
+}
+
+
+.product-card img {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+}
