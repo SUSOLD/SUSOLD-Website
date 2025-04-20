@@ -128,3 +128,57 @@ async def is_user_verified(current_user: dict = Depends(get_current_user)):
     
     is_verified = user.get("is_Verified", False)
     return {"is_verified": is_verified}
+
+
+# -------------------------------
+# Show favorite products
+# -------------------------------
+@main_router.get("/my_favorites")
+async def get_my_favorites(current_user: dict = Depends(get_current_user)):
+    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"favorites": user.get("favorites", [])}
+
+
+# -------------------------------
+# Add a product to favorites
+# -------------------------------
+@main_router.post("/add_to_favorites")
+async def add_to_favorites(product_id: str, current_user: dict = Depends(get_current_user)):
+    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if "favorites" not in user:
+        user["favorites"] = []
+    
+    if product_id not in user["favorites"]:
+        user["favorites"].append(product_id)
+        await user_collection.update_one(
+            {"_id": ObjectId(current_user["_id"])},
+            {"$set": {"favorites": user["favorites"]}}
+        )
+        return {"message": "Product added to favorites"}
+    else:
+        raise HTTPException(status_code=400, detail="Product is already in favorites")
+
+# -------------------------------
+# Remove a product from favorites
+# -------------------------------
+@main_router.post("/remove_from_favorites")
+async def remove_from_favorites(product_id: str, current_user: dict = Depends(get_current_user)):
+    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if "favorites" in user and product_id in user["favorites"]:
+        user["favorites"].remove(product_id)
+        await user_collection.update_one(
+            {"_id": ObjectId(current_user["_id"])},
+            {"$set": {"favorites": user["favorites"]}}
+        )
+        return {"message": "Product removed from favorites"}
+    else:
+        raise HTTPException(status_code=400, detail="Product not found in favorites")
