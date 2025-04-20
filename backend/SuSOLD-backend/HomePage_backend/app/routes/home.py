@@ -1,7 +1,7 @@
 from bson import ObjectId
 from fastapi import APIRouter, Query, HTTPException, Path
 from typing import Optional
-from app.database import products_collection
+from app.database import products_collection, users_collection
 from app.schemas import ProductCreate, ProductUpdate
 from datetime import datetime, time
 
@@ -12,18 +12,20 @@ router = APIRouter()
 def get_home_data(
     category: Optional[str] = Query(None),
     subcategory: Optional[str] = Query(None),
+    brand: Optional[str] = Query(None),
     max_price: Optional[float] = Query(None),
     min_price: Optional[float] = Query(None),
     condition: Optional[str] = Query(None),
     age: Optional[str] = Query(None),
-    course: Optional[bool] = Query(None),  # ✅ course is boolean now
+    course: Optional[bool] = Query(None),
     dorm: Optional[bool] = Query(None),
     verified: Optional[bool] = Query(None),
     warranty_status: Optional[bool] = Query(None),
     in_stock: Optional[bool] = Query(None),
     available_now: Optional[bool] = Query(None),
     available_after_semester: Optional[bool] = Query(None),
-    returnable: Optional[bool] = Query(None)
+    returnable: Optional[bool] = Query(None),
+    sort_by: Optional[str] = Query(None)
 ):
     query = {}
 
@@ -31,6 +33,8 @@ def get_home_data(
         query["category"] = category
     if subcategory:
         query["subcategory"] = subcategory
+    if brand:
+        query["brand"] = brand
     if min_price is not None or max_price is not None:
         query["price"] = {}
         if min_price is not None:
@@ -42,11 +46,11 @@ def get_home_data(
     if age:
         query["age"] = age
     if course is not None:
-        query["course"] = course  # course now treated as bool
+        query["course"] = course
     if dorm is not None:
         query["dorm"] = dorm
     if verified is not None:
-        query["seller_verified"] = verified
+        query["verified"] = verified
     if warranty_status is not None:
         query["warranty_status"] = warranty_status
     if in_stock is not None:
@@ -58,8 +62,22 @@ def get_home_data(
     if returnable is not None:
         query["returnable"] = returnable
 
+    sort_order = []
+    if sort_by == "price_asc":
+        sort_order.append(("price", 1))
+    elif sort_by == "price_desc":
+        sort_order.append(("price", -1))
+    elif sort_by == "popularity":
+        sort_order.append(("likes", -1))
+    elif sort_by == "newest":
+        sort_order.append(("created_at", -1))
+
+    cursor = products_collection.find(query)
+    if sort_order:
+        cursor = cursor.sort(sort_order)
+
     products = []
-    for product in products_collection.find(query):
+    for product in cursor:
         product["item_id"] = str(product["_id"])
         del product["_id"]
         products.append(product)
@@ -86,7 +104,7 @@ def add_product(product: ProductCreate):
     return {"message": "Product added successfully", "item_id": str(result.inserted_id)}
 
 
-#get_item_id
+# ------------------------- GET by ID -------------------------
 @router.get("/home/item/{item_id}")
 def get_product_by_id(item_id: str):
     try:
@@ -101,7 +119,6 @@ def get_product_by_id(item_id: str):
     product["item_id"] = str(product["_id"])
     del product["_id"]
     return product
-
 
 
 # ------------------------- PUT -------------------------
@@ -129,7 +146,7 @@ def update_product(item_id: str, update_data: ProductUpdate):
         return {"message": "No changes made"}
 
 
-#deleteee
+# ------------------------- DELETE -------------------------
 @router.delete("/home/{item_id}")
 def delete_product(item_id: str):
     try:
@@ -142,3 +159,47 @@ def delete_product(item_id: str):
         return {"message": "Product deleted successfully"}
     else:
         raise HTTPException(status_code=404, detail="Product not found")
+
+
+# ------------------------- FAVORITES / BASKET -------------------------
+
+@router.post("/user/favorites/{item_id}")
+def toggle_favorite(item_id: str):
+    users_collection.update_one(
+        {"_id": "default"},
+        [{"$set": {"favorites": {"$cond": [
+            {"$in": [item_id, "$favorites"]},
+            {"$setDifference": ["$favorites", [item_id]]},
+            {"$concatArrays": ["$favorites", [item_id]]}
+        ]}}}],
+        upsert=True
+    )
+    user = users_collection.find_one({"_id": "default"})
+    return {"favorites": user.get("favorites", [])}
+
+
+@router.post("/user/basket/{item_id}")
+def toggle_basket(item_id: str):
+    users_collection.update_one(
+        {"_id": "default"},
+        [{"$set": {"basket": {"$cond": [
+            {"$in": [item_id, "$basket"]},
+            {"$setDifference": ["$basket", [item_id]]},
+            {"$concatArrays": ["$basket", [item_id]]}
+        ]}}}],
+        upsert=True
+    )
+    user = users_collection.find_one({"_id": "default"})
+    return {"basket": user.get("basket", [])}
+
+
+@router.get("/user/favorites")
+def get_favorites():
+    user = users_collection.find_one({"_id": "default"})
+    return {"favorites": user.get("favorites", [])} if user else {"favorites": []}
+
+
+@router.get("/user/basket")
+def get_basket():
+    user = users_collection.find_one({"_id": "default"})
+    return {"basket": user.get("basket", [])} if user else {"basket": []}

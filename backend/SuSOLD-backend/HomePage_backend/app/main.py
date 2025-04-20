@@ -1,6 +1,8 @@
 from fastapi import FastAPI
-from app.routes import home  # Import your home.py
 from fastapi.middleware.cors import CORSMiddleware
+from app.routes import home
+from app.routes import favorites
+from app.routes import favorites, basket  # make sure these match file names
 
 
 app = FastAPI()
@@ -13,9 +15,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# Register the home API route
+# Register API routes
 app.include_router(home.router, prefix="/api")
+app.include_router(favorites.router, prefix="/api")  # ✅ NEW ROUTER
+
+app.include_router(favorites.router, prefix="/api")
+app.include_router(basket.router, prefix="/api")
+
 
 if __name__ == "__main__":
     import uvicorn
