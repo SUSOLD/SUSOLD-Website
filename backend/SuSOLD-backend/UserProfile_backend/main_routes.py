@@ -78,3 +78,53 @@ async def get_my_feedbacks(current_user: dict = Depends(get_current_user)):
     serialized_feedbacks = [serialize_feedback(fb) for fb in feedbacks]
 
     return {"feedbacks_received": serialized_feedbacks}
+
+
+# -------------------------------
+# Return name and lastname of current user
+# -------------------------------
+@main_router.get("/my_name")
+async def get_my_name(current_user: dict = Depends(get_current_user)):
+    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"name": user.get("name"), "lastname": user.get("lastname")}
+
+
+# -------------------------------
+# Show photo of the user
+# -------------------------------
+@main_router.get("/current_photo")
+async def get_current_photo(current_user: dict = Depends(get_current_user)):
+    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    photo_url = user.get("photo", [])
+    return {"photo_url": photo_url}
+
+
+# -------------------------------
+# Show current rating the user
+# -------------------------------
+@main_router.get("/current_rating")
+async def get_current_rating(current_user: dict = Depends(get_current_user)):
+    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"current_rating": user.get("rating", 0.0)}
+
+
+# -------------------------------
+# Display is_Verified value of the user
+# -------------------------------
+@main_router.get("/is_verified")
+async def is_user_verified(current_user: dict = Depends(get_current_user)):
+    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    is_verified = user.get("is_Verified", False)
+    return {"is_verified": is_verified}
