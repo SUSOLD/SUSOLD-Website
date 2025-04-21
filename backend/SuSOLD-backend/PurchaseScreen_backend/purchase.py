@@ -8,20 +8,10 @@ from fastapi.responses import JSONResponse
 #
 from fastapi.middleware.cors import CORSMiddleware
 #
+from database import orders, cart
+from main import app
 
-app = FastAPI()
 
-# Enable CORS for all origins (development only)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Use specific origins in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-client = MongoClient("mongodb://localhost:27017/")
-db = client["ecommerce"]
 
 USER_ID = 123
 
@@ -57,7 +47,7 @@ def get_user_data():
 
 @app.post("/complete-purchase")
 def complete_purchase(data: PurchaseData):
-    cart_items = list(db.cart.find({"user_id": USER_ID}))
+    cart_items = list(cart.find({"user_id": USER_ID}))
     if not cart_items:
         raise HTTPException(status_code=404, detail="Cart is empty")
 
@@ -69,14 +59,14 @@ def complete_purchase(data: PurchaseData):
     item_names = [item["item_name"] for item in items_cursor]
 
     # Insert the order
-    db.bought_items.insert_one({
+    orders.insert_one({
         "order_id": order_id,
         "item_id": item_ids,
         "shipping_address": data.selected_address,
         "payment_info": data.selected_credit_card
     })
 
-    db.cart.delete_many({"user_id": USER_ID})
+    cart.delete_many({"user_id": USER_ID})
 
     # Build the thank-you message
     message = (

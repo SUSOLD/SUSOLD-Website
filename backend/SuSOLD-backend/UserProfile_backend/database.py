@@ -1,3 +1,4 @@
+'''
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 import os
@@ -10,4 +11,4 @@ client = AsyncIOMotorClient(MONGO_URL)
 db = client.SuSOLD
 
 user_collection = db.users
-feedback_collection = db.feedbacks
+feedback_collection = db.feedbacks'''

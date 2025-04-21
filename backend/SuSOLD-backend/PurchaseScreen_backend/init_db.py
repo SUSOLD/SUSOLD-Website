@@ -1,3 +1,4 @@
+'''
 from pymongo import MongoClient
 import pprint
 
@@ -40,4 +41,4 @@ pprint.pprint(list(db.items.find()))
 
 print("\nCart:")
 pprint.pprint(list(db.cart.find()))
-
+'''
