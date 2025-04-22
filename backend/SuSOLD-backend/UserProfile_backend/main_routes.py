@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from bson import ObjectId
 from datetime import datetime, timezone
-from database import user_collection, feedback_collection, product_collection
+from database import users_collection, feedback_collection, item_collection
 from auth import get_current_user, hash_password
 from model import FeedbackInput, Product, UserUpdate
 
@@ -12,70 +12,143 @@ main_router = APIRouter()
 # -------------------------------
 @main_router.post("/send_feedback")
 async def send_feedback(data: FeedbackInput, current_user: dict = Depends(get_current_user)):
-    try:
-        seller_object_id = ObjectId(data.seller_id)
-        sender_object_id = current_user["_id"]  # Extracted from the token
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid ID format.")
+    seller_id = data.seller_id
+    sender_id = current_user["user_id"]
 
     if data.rating is None and (data.comment is None or data.comment.strip() == ""):
         raise HTTPException(status_code=400, detail="At least one of rating or comment must be provided.")
 
-    seller = await user_collection.find_one({"_id": seller_object_id})
+    seller = await users_collection.find_one({"user_id": seller_id})
     if not seller:
         raise HTTPException(status_code=404, detail="Seller not found.")
-    
-    # Prepare feedback document
+
     now = datetime.now(timezone.utc)
     feedback_doc = {
         "rating": data.rating,
         "comment": data.comment,
-        "sender": str(sender_object_id),
-        "receiver": str(seller_object_id),
-        "date": now
+        "sender_id": sender_id,
+        "receiver_id": seller_id,
+        "date": now,
+        "isCommentVerified": False,
+        "item": data.item  # item_id as a string
     }
 
-    # Insert feedback to feedbacks collection
     await feedback_collection.insert_one(feedback_doc)
 
-    # Update seller rating info if rating was given
-    update_data = {"$push": {"feedbacks_received": feedback_doc}} # I changed the variable here !!! be careful 
     if data.rating is not None:
         current_rating = seller.get("rating", 0.0)
-        current_rate_number = seller.get("rate_Number", 0)
+        current_rate_number = seller.get("rate_number", 0)
         new_rate_number = current_rate_number + 1
         new_rating = (current_rating * current_rate_number + data.rating) / new_rate_number
-        update_data["$set"] = {
-            "rating": new_rating,
-            "rate_Number": new_rate_number
-        }
-
-    await user_collection.update_one({"_id": seller_object_id}, update_data)
+        await users_collection.update_one(
+            {"user_id": seller_id},
+            {
+                "$set": {
+                    "rating": new_rating,
+                    "rate_number": new_rate_number
+                }
+            }
+        )
 
     return {
         "message": "Feedback submitted successfully.",
-        "new_rating": round(update_data.get("$set", {}).get("rating", seller["rating"]), 2),
-        "rate_Number": update_data.get("$set", {}).get("rate_Number", seller["rate_Number"])
+        "new_rating": round(new_rating, 2) if data.rating is not None else seller.get("rating", 0.0),
+        "rate_number": new_rate_number if data.rating is not None else seller.get("rate_number", 0)
     }
 
 
 # -------------------------------
 # Show feedbacks for current user
 # -------------------------------
-def serialize_feedback(feedback):
-    feedback["_id"] = str(feedback["_id"])
-    return feedback
-
 @main_router.get("/my_feedbacks")
 async def get_my_feedbacks(current_user: dict = Depends(get_current_user)):
-    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    feedbacks = user.get("feedbacks_received", [])
-    serialized_feedbacks = [serialize_feedback(fb) for fb in feedbacks]
+    feedbacks = feedback_collection.find({"receiver": current_user["user_id"]})
+    feedback_list = []
+    async for fb in feedbacks:
+        fb["_id"] = str(fb["_id"])
+        feedback_list.append(fb)
+    return {"feedbacks_received": feedback_list}
 
-    return {"feedbacks_received": serialized_feedbacks}
+
+# -------------------------------
+# Show unapproved comments (PRODUCT MANAGEERRRRR)
+# -------------------------------
+@main_router.get("/unapproved_comments")
+async def get_unapproved_comments(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not current_user.get("isManager", False):
+        raise HTTPException(status_code=403, detail="Not authorized to display comments.")
+
+    feedbacks = await feedback_collection.find({"comment": {"$ne": None}, "isCommentVerified": False}).to_list(length=None)
+
+    # Serialize feedbacks (convert ObjectId to string)
+    for fb in feedbacks:
+        fb["_id"] = str(fb["_id"])
+
+    return {"unapproved_comments": feedbacks}
+
+
+# -------------------------------
+# Approve a comment (PRODUCT MANAGERR)
+# -------------------------------
+@main_router.post("/approve_comment/{feedback_id}")
+async def approve_comment(feedback_id: str, current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not current_user.get("isManager", False):
+       raise HTTPException(status_code=403, detail="Not authorized to approve a comment.")
+
+    try:
+        feedback_obj_id = ObjectId(feedback_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid feedback ID format.")
+
+    result = await feedback_collection.update_one(
+        {"_id": feedback_obj_id, "comment": {"$ne": None}},
+        {"$set": {"isCommentVerified": True}}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Feedback not found or no comment to approve.")
+
+    return {"message": "Comment approved successfully."}
+
+
+# -------------------------------
+# Remove a comment (PRODUCT MANAGERRR)
+# -------------------------------
+@main_router.delete("/remove_comment/{feedback_id}")
+async def remove_comment(feedback_id: str, current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not current_user.get("isManager", False):
+        raise HTTPException(status_code=403, detail="Not authorized to remove comments.")
+
+    try:
+        feedback_obj_id = ObjectId(feedback_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid feedback ID format.")
+
+    result = await feedback_collection.update_one(
+        {"_id": feedback_obj_id, "comment": {"$ne": None}},
+        {"$unset": {"comment": ""}, "$set": {"isCommentVerified": False}}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Comment not found or already removed.")
+
+    return {"message": "Comment removed successfully."}
 
 
 # -------------------------------
@@ -83,7 +156,7 @@ async def get_my_feedbacks(current_user: dict = Depends(get_current_user)):
 # -------------------------------
 @main_router.get("/my_name")
 async def get_my_name(current_user: dict = Depends(get_current_user)):
-    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -95,7 +168,7 @@ async def get_my_name(current_user: dict = Depends(get_current_user)):
 # -------------------------------
 @main_router.get("/current_photo")
 async def get_current_photo(current_user: dict = Depends(get_current_user)):
-    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -108,7 +181,7 @@ async def get_current_photo(current_user: dict = Depends(get_current_user)):
 # -------------------------------
 @main_router.get("/current_rating")
 async def get_current_rating(current_user: dict = Depends(get_current_user)):
-    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -120,7 +193,7 @@ async def get_current_rating(current_user: dict = Depends(get_current_user)):
 # -------------------------------
 @main_router.get("/is_verified")
 async def is_user_verified(current_user: dict = Depends(get_current_user)):
-    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -133,11 +206,11 @@ async def is_user_verified(current_user: dict = Depends(get_current_user)):
 # -------------------------------
 @main_router.get("/my_offerings")
 async def get_my_offerings(current_user: dict = Depends(get_current_user)):
-    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return {"offerings": user.get("offered_products", [])}
+    return {"offerings": user.get("offeredProducts", [])}
 
 
 # -------------------------------
@@ -145,28 +218,25 @@ async def get_my_offerings(current_user: dict = Depends(get_current_user)):
 # -------------------------------
 @main_router.post("/add_to_offerings")
 async def add_to_offerings(product: Product, current_user: dict = Depends(get_current_user)):
-    # Step 1: Create product in DB
     product_dict = product.model_dump()
-    insert_result = await product_collection.insert_one(product_dict)
+    insert_result = await item_collection.insert_one(product_dict)
     product_id = insert_result.inserted_id
 
-    # Step 2: Fetch full product (including MongoDB _id)
-    new_product = await product_collection.find_one({"_id": product_id})
+    new_product = await item_collection.find_one({"item_id": product_id})
     if not new_product:
         raise HTTPException(status_code=500, detail="Failed to create product.")
 
-    # Step 3: Add product to user's offerings
-    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if "offered_products" not in user:
-        user["offered_products"] = []
+    if "offeredProducts" not in user:
+        user["offeredProducts"] = []
 
-    user["offered_products"].append(new_product)
-    await user_collection.update_one(
-        {"_id": ObjectId(current_user["_id"])},
-        {"$set": {"offered_products": user["offered_products"]}}
+    user["offeredProducts"].append(new_product)
+    await users_collection.update_one(
+        {"user_id": current_user["user_id"]},
+        {"$set": {"offeredProducts": user["offeredProducts"]}}
     )
 
     return {"message": "Product created and added to offerings."}
@@ -177,17 +247,17 @@ async def add_to_offerings(product: Product, current_user: dict = Depends(get_cu
 # -------------------------------
 @main_router.post("/remove_from_offerings")
 async def remove_from_offerings(product_id: str, current_user: dict = Depends(get_current_user)):
-    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    updated_offerings = [p for p in user.get("offered_products", []) if str(p["_id"]) != product_id]
-    if len(updated_offerings) == len(user.get("offered_products", [])):
+    updated_offerings = [p for p in user.get("offeredProducts", []) if str(p["item_id"]) != product_id]
+    if len(updated_offerings) == len(user.get("offeredProducts", [])):
         raise HTTPException(status_code=400, detail="Product not found in offerings")
 
-    await user_collection.update_one(
-        {"_id": ObjectId(current_user["_id"])},
-        {"$set": {"offered_products": updated_offerings}}
+    await users_collection.update_one(
+        {"user_id": current_user["user_id"]},
+        {"$set": {"offeredProducts": updated_offerings}}
     )
     return {"message": "Product removed from offerings"}
 
@@ -197,7 +267,7 @@ async def remove_from_offerings(product_id: str, current_user: dict = Depends(ge
 # -------------------------------
 @main_router.get("/my_favorites")
 async def get_my_favorites(current_user: dict = Depends(get_current_user)):
-    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -209,23 +279,23 @@ async def get_my_favorites(current_user: dict = Depends(get_current_user)):
 # -------------------------------
 @main_router.post("/add_to_favorites")
 async def add_to_favorites(product_id: str, current_user: dict = Depends(get_current_user)):
-    product = await product_collection.find_one({"_id": ObjectId(product_id)})
+    product = await item_collection.find_one({"item_id": ObjectId(product_id)})
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
     if "favorites" not in user:
         user["favorites"] = []
 
-    if any(str(p["_id"]) == product_id for p in user["favorites"]):
+    if any(str(p["item_id"]) == product_id for p in user["favorites"]):
         raise HTTPException(status_code=400, detail="Product already in favorites")
 
     user["favorites"].append(product)
-    await user_collection.update_one(
-        {"_id": ObjectId(current_user["_id"])},
+    await users_collection.update_one(
+        {"user_id": current_user["user_id"]},
         {"$set": {"favorites": user["favorites"]}}
     )
 
@@ -237,17 +307,17 @@ async def add_to_favorites(product_id: str, current_user: dict = Depends(get_cur
 # -------------------------------
 @main_router.post("/remove_from_favorites")
 async def remove_from_favorites(product_id: str, current_user: dict = Depends(get_current_user)):
-    user = await user_collection.find_one({"_id": ObjectId(current_user["_id"])})
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    updated_favorites = [p for p in user.get("favorites", []) if str(p["_id"]) != product_id]
+    updated_favorites = [p for p in user.get("favorites", []) if str(p["item_id"]) != product_id]
 
     if len(updated_favorites) == len(user.get("favorites", [])):
         raise HTTPException(status_code=400, detail="Product not found in favorites")
 
-    await user_collection.update_one(
-        {"_id": ObjectId(current_user["_id"])},
+    await users_collection.update_one(
+        {"user_id": current_user["user_id"]},
         {"$set": {"favorites": updated_favorites}}
     )
 
@@ -259,8 +329,7 @@ async def remove_from_favorites(product_id: str, current_user: dict = Depends(ge
 # -------------------------------
 @main_router.put("/update_user_info")
 async def update_user_info(update_data: UserUpdate, current_user: dict = Depends(get_current_user)):
-    user_id = ObjectId(current_user["_id"])
-    user = await user_collection.find_one({"_id": user_id})
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -268,7 +337,6 @@ async def update_user_info(update_data: UserUpdate, current_user: dict = Depends
     if not update_dict:
         raise HTTPException(status_code=400, detail="No data provided for update.")
 
-    # Validate updated fields using the validators defined in UserUpdate
     try:
         validated = UserUpdate(**update_dict)
     except Exception as e:
@@ -277,6 +345,6 @@ async def update_user_info(update_data: UserUpdate, current_user: dict = Depends
     if "password" in update_dict:
         update_dict["password"] = hash_password(update_dict["password"])
 
-    await user_collection.update_one({"_id": user_id}, {"$set": update_dict})
+    await users_collection.update_one({"user_id": current_user["user_id"]}, {"$set": update_dict})
 
     return {"message": "User information updated successfully"}

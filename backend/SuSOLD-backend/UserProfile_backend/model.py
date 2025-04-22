@@ -2,12 +2,14 @@ from datetime import datetime
 from pydantic import BaseModel, field_validator
 from typing import List, Optional
 import re
+from HomePage_backend.app.schemas import ProductCreate
 
-# DUMMY DUMMY DUMMYYYYYYY
 class creditCard(BaseModel):
     number: str
     expiry: str
+    name: str
 
+'''
 class Product(BaseModel):
     name: str
     price: float
@@ -16,13 +18,15 @@ class Purchase(BaseModel):
     product: Product
     purchase_date: datetime
     purchase_card: creditCard
-
+'''
 # -----------------------------------------------
 
 class Feedback(BaseModel):
+    item: str # corresponding item id
     rating: Optional[float] = None  # Between 0-5
     comment: Optional[str] = None
-    sender: str  # customer
+    isCommentVerified: bool = False # should be verified by product manager
+    sending: str  # customer
     receiver: str  # seller
     date: datetime
 
@@ -53,26 +57,29 @@ class FeedbackInput(BaseModel):
     rating: Optional[float] = None
     comment: Optional[str] = None
     seller_id: str
+    item: str
     
 # -----------------------------------------------
 
 class User(BaseModel):
-    name: str        #input
-    lastname: str    #input
-    email: str       #input
-    password: str    #input
+    name: str                               #input
+    lastname: str                           #input
+    email: str                              #input
+    password: str                           #input
+    photo: List[str] = []                   #input
+    credit_cards: List[creditCard] = []     #input
+    addresses: List[str] = []               #input
 
-    is_Verified: bool = False
-    photo: List[str] = []
-    creditCards: List[creditCard] = [] # ASK AHMET HOW TO MANAGE
+    isManager: bool = False
+    isVerified: bool = False
+    user_id: str                            # we will generate this!!!
 
     rating: float = 0.0
-    rate_Number: int = 0
-    feedbacks_received: List[Feedback] = []
+    rate_number: int = 0
+    feedbackReceived: List[Feedback] = []
 
-    favorites: List[Product] = [] # ASK ARDA HOW TO MANAGE!!!
-    offered_products: List[Product] = []
-    purchased_products: List[Purchase] = []
+    favorites: List[str] = []               # item ids will be here
+    offeredProducts: List[str] = []         # item ids will be here
 
     @field_validator('email')
     @classmethod
@@ -100,6 +107,7 @@ class UserUpdate(BaseModel):
     password: Optional[str]
     photo: Optional[List[str]] = None
     creditCards: Optional[List[creditCard]] = []
+    addresses: Optional[List[str]] = []
 
 
     @field_validator('email')
@@ -125,3 +133,4 @@ class UserUpdate(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
+    isManager: Optional[bool] = False
