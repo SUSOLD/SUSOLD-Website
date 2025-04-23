@@ -47,7 +47,7 @@ def get_user_data():
 
 @app.post("/complete-purchase")
 def complete_purchase(data: PurchaseData):
-    cart_items = list(cart.find({"user_id": USER_ID}))
+    cart_items = list(cart_collection.find({"user_id": USER_ID}))
     if not cart_items:
         raise HTTPException(status_code=404, detail="Cart is empty")
 
@@ -91,26 +91,26 @@ import json
 
 @app.get("/print-database", response_class=PlainTextResponse)
 def print_database():
-    users = list(db.users.find({}, {"_id": 0}))
-    cart = list(db.cart.find({}, {"_id": 0}))
-    items = list(db.items.find({}, {"_id": 0}))
-    bought_items = list(db.bought_items.find({}, {"_id": 0}))
+    users = list(users_collection.find({}, {"_id": 0}))
+    cart = list(cart_collection.find({}, {"_id": 0}))
+    items = list(item_collection.find({}, {"_id": 0}))
+    orders = list(order_collection.find({}, {"_id": 0}))
 
     response = "\n--- USERS ---\n" + json.dumps(users, indent=2)
     response += "\n\n--- CART ---\n" + json.dumps(cart, indent=2)
     response += "\n\n--- ITEMS ---\n" + json.dumps(items, indent=2)
-    response += "\n\n--- BOUGHT ITEMS ---\n" + json.dumps(bought_items, indent=2)
+    response += "\n\n--- ORDERS ---\n" + json.dumps(bought_items, indent=2)
 
     return response
 
 @app.get("/get-cart-items")
 def get_cart_items():
     # Step 1: Get item_ids in user's cart
-    cart_items = list(db.cart.find({"user_id": 123}, {"_id": 0, "item_id": 1}))
+    cart_items = list(cart_collection.find({"user_id": 123}, {"_id": 0, "item_id": 1}))
     item_ids = [entry["item_id"] for entry in cart_items]
 
     # Step 2: Find items in the items collection with those item_ids
-    items = list(db.items.find({"item_id": {"$in": item_ids}}, {"_id": 0, "item_name": 1}))
+    items = list(item_collection.find({"item_id": {"$in": item_ids}}, {"_id": 0, "item_name": 1}))
 
     return [item["item_name"] for item in items]
 
