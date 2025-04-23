@@ -1,9 +1,7 @@
-'''
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import home
-from app.routes import favorites
-from app.routes import  basket  # make sure these match file names
+from app.routes import favorites, basket 
 
 
 app = FastAPI()
@@ -16,9 +14,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register API routes
 app.include_router(home.router, prefix="/api")
-app.include_router(favorites.router, prefix="/api")  # ✅ NEW ROUTER
+app.include_router(favorites.router, prefix="/api")  
 
 app.include_router(favorites.router, prefix="/api")
 app.include_router(basket.router, prefix="/api")
@@ -26,4 +23,4 @@ app.include_router(basket.router, prefix="/api")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)'''
+    uvicorn.run(app, host="127.0.0.1", port=8000)
