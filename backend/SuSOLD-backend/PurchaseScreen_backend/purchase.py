@@ -9,25 +9,14 @@ from database import orders, cart
 from main import app
 from fastapi.responses import PlainTextResponse
 import json
+from auth import get_current_user
 
-USER_ID = 123
+current_user = await get_current_user() ## Burada await kullanmaya gerek var mı?
+USER_ID = current_user["user_id"]
 
 class PurchaseData(BaseModel):
     selected_address: str
     selected_credit_card: str
-
-
-
-##@app.get("/get-user-data")
-##def get_user_data():
-##    user = db.users.find_one({"user_id": USER_ID})
-##    if not user:
-##        raise HTTPException(status_code=404, detail="User not found")
-##    
-##    return {
-##        "addresses": user.get("addresses", []),
-##        "credit_cards": user.get("credit_cards", [])
-##    }
 
 @app.get("/get-user-data")
 def get_user_data():
