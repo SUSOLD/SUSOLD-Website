@@ -4,14 +4,11 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 import random
 from fastapi.responses import JSONResponse
-
-#
 from fastapi.middleware.cors import CORSMiddleware
-#
 from database import orders, cart
 from main import app
-
-
+from fastapi.responses import PlainTextResponse
+import json
 
 USER_ID = 123
 
@@ -86,8 +83,7 @@ def complete_purchase(data: PurchaseData):
 
 
 
-from fastapi.responses import PlainTextResponse
-import json
+
 
 @app.get("/print-database", response_class=PlainTextResponse)
 def print_database():
