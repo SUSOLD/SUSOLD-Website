@@ -23,7 +23,7 @@ class Purchase(BaseModel):
 
 class Feedback(BaseModel):
     item: str # corresponding item id
-    rating: Optional[float] = None  # Between 0-5
+    rating: Optional[float] = None
     comment: Optional[str] = None
     isCommentVerified: bool = False # should be verified by product manager
     sending: str  # customer
