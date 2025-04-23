@@ -34,7 +34,7 @@ class PurchaseData(BaseModel):
 
 @app.get("/get-user-data")
 def get_user_data():
-    user = db.users.find_one({"user_id": 123})
+    user = users_collection.find_one({"user_id": 123})
     print("User fetched from DB:", user)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -55,18 +55,18 @@ def complete_purchase(data: PurchaseData):
     order_id = random.randint(10000, 99999)
 
     # Fetch item names from the items collection
-    items_cursor = db.items.find({"item_id": {"$in": item_ids}}, {"_id": 0, "item_name": 1})
+    items_cursor = item_collection.find({"item_id": {"$in": item_ids}}, {"_id": 0, "item_name": 1})
     item_names = [item["item_name"] for item in items_cursor]
 
     # Insert the order
-    orders.insert_one({
+    order_collection.insert_one({
         "order_id": order_id,
         "item_id": item_ids,
         "shipping_address": data.selected_address,
         "payment_info": data.selected_credit_card
     })
 
-    cart.delete_many({"user_id": USER_ID})
+    cart_collection.delete_many({"user_id": USER_ID})
 
     # Build the thank-you message
     message = (
