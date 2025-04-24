@@ -1,7 +1,75 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="67daf01c-2a46-4878-b85d-bc7e72e67024" name="Changes" comment="" />
+    <list default="true" id="67daf01c-2a46-4878-b85d-bc7e72e67024" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/.idea/SuSOLD-backend.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/HomePage_backend/.env" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/HomePage_backend/app/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/HomePage_backend/app/crud.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/HomePage_backend/app/database.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/HomePage_backend/app/main.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/HomePage_backend/app/models.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/HomePage_backend/app/routes/basket.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/HomePage_backend/app/routes/favorites.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/HomePage_backend/app/routes/home.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/HomePage_backend/app/routes/init.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/HomePage_backend/app/routes/products.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/HomePage_backend/app/routes/users.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/HomePage_backend/app/schemas.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/PurchaseScreen_backend/index.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/PurchaseScreen_backend/init_db.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/PurchaseScreen_backend/purchase.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/UserProfile_backend/database.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/UserProfile_backend/main.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/UserProfile_backend/main_routes.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/UserProfile_backend/model.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/database.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/main.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/registerloginbackend/auth_routes.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/registerloginbackend/database.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/registerloginbackend/jwt_handler.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/registerloginbackend/main.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/registerloginbackend/user_model.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/test_main.http" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/SuSOLD-backend/unit_tests.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/profile_frontend" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/.idea/SuSOLD-backend.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/HomePage_backend/app/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/HomePage_backend/app/crud.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/HomePage_backend/app/database.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/HomePage_backend/app/main.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/HomePage_backend/app/models.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/HomePage_backend/app/routes/home.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/HomePage_backend/app/routes/init.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/HomePage_backend/app/routes/products.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/HomePage_backend/app/routes/users.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/HomePage_backend/app/schemas.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/HomePage_backend/empty_file" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/backend/SuSOLD-backend/test_main.http" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/frontend/homePage_frontend/emptyFile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/frontend/homePage_frontend/src/App.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/frontend/homePage_frontend/src/App.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/frontend/homePage_frontend/src/assets/react.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/frontend/homePage_frontend/src/components/CategoriesSection.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/frontend/homePage_frontend/src/components/Footer.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/frontend/homePage_frontend/src/components/Header.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/frontend/homePage_frontend/src/components/HeroSection.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/frontend/homePage_frontend/src/index.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/frontend/homePage_frontend/src/main.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/frontend/homePage_frontend/src/pages/HomePage.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/frontend/homePage_frontend/src/pages/SellForm.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/frontend/mainf.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/profile_frontend/my-profile-app/src/pages/MyProfile.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/profile_frontend/my-profile-app/src/pages/MyProfile.jsx" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -46,6 +114,7 @@
       <updated>1741956666037</updated>
       <workItem from="1741956667436" duration="25000" />
       <workItem from="1741958803497" duration="2000" />
+      <workItem from="1745513565442" duration="3000" />
     </task>
     <servers />
   </component>
