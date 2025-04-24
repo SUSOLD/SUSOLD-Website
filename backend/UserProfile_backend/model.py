@@ -1,24 +1,12 @@
 from datetime import datetime
-from pydantic import BaseModel, field_validator
-from typing import List, Optional
+from pydantic import BaseModel, field_validator, Field
+from typing import List, Optional, Annotated
 import re
-from backend.HomePage_backend.app.schemas import ProductCreate
 
 class creditCard(BaseModel):
     number: str
     expiry: str
     name: str
-
-'''
-class Product(BaseModel):
-    name: str
-    price: float
-
-class Purchase(BaseModel):
-    product: Product
-    purchase_date: datetime
-    purchase_card: creditCard
-'''
 # -----------------------------------------------
 
 class Feedback(BaseModel):
@@ -72,7 +60,7 @@ class User(BaseModel):
     isManager: bool = False                 #input
 
     isVerified: bool = False
-    user_id: str                            # we will generate this!!!
+    user_id: str                          # we will generate this!!!
 
     rating: float = 0.0
     rate_number: int = 0

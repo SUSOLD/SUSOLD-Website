@@ -1,8 +1,8 @@
 from bson import ObjectId
 from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
-from app.database import item_collection
-from app.schemas import ProductCreate, ProductUpdate
+from backend.database import item_collection
+from backend.HomePage_backend.app.schemas import ProductCreate, ProductUpdate
 from datetime import datetime, time
 
 router = APIRouter()

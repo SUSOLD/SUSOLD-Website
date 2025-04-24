@@ -21,7 +21,6 @@ app.add_middleware(
 
 app.include_router(home.router, prefix="/api")
 app.include_router(main_router, prefix="/api")
-#app.include_router(auth_router, prefix="/api")
 app.include_router(purchase_router, prefix="/api")
 app.include_router(favorites.router, prefix="/api")
 app.include_router(basket.router, prefix="/api")

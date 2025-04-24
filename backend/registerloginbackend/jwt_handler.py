@@ -11,7 +11,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-
+print("JWT_SECRET_KEY from .env:", os.getenv("JWT_SECRET_KEY"))
 # Secret key & algorithm
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
@@ -21,7 +21,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # Hashing helpers
 def hash_password(password: str):

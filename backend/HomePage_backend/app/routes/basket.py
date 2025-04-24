@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from bson import ObjectId
-from app.database import users_collection, item_collection
+from backend.database import users_collection, item_collection
 from backend.registerloginbackend.jwt_handler import get_current_user
 
 router = APIRouter()
