@@ -37,9 +37,23 @@ def complete_purchase(data: PurchaseData):
     if not cart_items:
         raise HTTPException(status_code=404, detail="Cart is empty")
 
+    order_ids = [doc['order_id'] for doc in orders.find({}, {'order_id': 1, '_id': 0})]    ## list of order_id's
+    while True:
+        order_id_number = random.randint(0, 99999)
+        if order_id_number % 10 == order_id_number:
+            order_id = "order0000" + str(order_id_number)
+        else if order_id_number % 100 == order_id_number:
+            order_id = "order000" + str(order_id_number)
+        else if order_id_number % 1000 == order_id_number:
+            order_id = "order00" + str(order_id_number)
+        else if order_id_number % 10000 == order_id_number:
+            order_id = "order0" + str(order_id_number)
+        else:
+            order_id = "order" + str(order_id_number)
+        if order_id not in order_ids:   
+            break
+    
     item_ids = [item["item_id"] for item in cart_items]
-    order_id = random.randint(10000, 99999)
-
     # Fetch item names from the items collection
     items_cursor = item_collection.find({"item_id": {"$in": item_ids}}, {"_id": 0, "item_name": 1})
     item_names = [item["item_name"] for item in items_cursor]
