@@ -1,15 +1,15 @@
 from bson import ObjectId
 from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
-from backend.database import item_collection
-from backend.HomePage_backend.app.schemas import ProductCreate, ProductUpdate
+from app.database import item_collection
+from app.schemas import ProductCreate, ProductUpdate
 from datetime import datetime, time
 
 router = APIRouter()
 
 # ------------------------- GET: List Products -------------------------
 @router.get("/home/")
-def get_home_data(
+async def get_home_data(
     title: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
     sub_category: Optional[str] = Query(None),
@@ -22,7 +22,6 @@ def get_home_data(
     course: Optional[bool] = Query(None),
     dorm: Optional[bool] = Query(None),
     verified: Optional[bool] = Query(None),
-    warranty_status: Optional[str] = Query(None),
     inStock: Optional[bool] = Query(None),
     available_now: Optional[bool] = Query(None),
     isSold: Optional[bool] = Query(None),
@@ -60,8 +59,6 @@ def get_home_data(
         query["dorm"] = dorm
     if verified is not None:
         query["verified"] = verified
-    if warranty_status:
-        query["warranty_status"] = warranty_status
     if inStock is not None:
         query["inStock"] = inStock
     if available_now is not None:
@@ -92,7 +89,7 @@ def get_home_data(
         cursor = cursor.sort(sort_order)
 
     products = []
-    for product in cursor:
+    async for product in cursor:
         product["item_id"] = product.get("item_id", str(product["_id"]))
         product["_id"] = str(product["_id"])
         products.append(product)
@@ -101,37 +98,38 @@ def get_home_data(
 
 # ------------------------- GET by item_id -------------------------
 @router.get("/home/item/{item_id}")
-def get_product_by_item_id(item_id: str):
-    product = item_collection.find_one({"item_id": item_id})
+async def get_product_by_item_id(item_id: str):
+    product = await item_collection.find_one({"item_id": item_id})
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    product["_id"] = str(product["_id"])
     return product
 
 # ------------------------- GET by Title -------------------------
 @router.get("/home/title/{title}")
-def get_product_id_by_title(title: str):
-    product = item_collection.find_one({"title": title})
+async def get_product_id_by_title(title: str):
+    product = await item_collection.find_one({"title": title})
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return {"item_id": product.get("item_id", str(product["_id"]))}
 
 # ------------------------- POST -------------------------
 @router.post("/home/")
-def add_product(product: ProductCreate):
+async def add_product(product: ProductCreate):
     product_dict = product.dict()
     if product_dict.get("warranty_expiry"):
         product_dict["warranty_expiry"] = datetime.combine(product_dict["warranty_expiry"], time.min)
-    result = item_collection.insert_one(product_dict)
+    result = await item_collection.insert_one(product_dict)
     return {"message": "Product added successfully", "item_id": str(result.inserted_id)}
 
 # ------------------------- PUT -------------------------
 @router.put("/home/{item_id}")
-def update_product(item_id: str, update_data: ProductUpdate):
+async def update_product(item_id: str, update_data: ProductUpdate):
     update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
     if "warranty_expiry" in update_dict and update_dict["warranty_expiry"]:
         update_dict["warranty_expiry"] = datetime.combine(update_dict["warranty_expiry"], time.min)
 
-    result = item_collection.update_one(
+    result = await item_collection.update_one(
         {"item_id": item_id},
         {"$set": update_dict}
     )
@@ -145,8 +143,8 @@ def update_product(item_id: str, update_data: ProductUpdate):
 
 # ------------------------- DELETE -------------------------
 @router.delete("/home/{item_id}")
-def delete_product(item_id: str):
-    result = item_collection.delete_one({"item_id": item_id})
+async def delete_product(item_id: str):
+    result = await item_collection.delete_one({"item_id": item_id})
     if result.deleted_count == 1:
         return {"message": "Product deleted successfully"}
     else:
