@@ -11,7 +11,7 @@ from fastapi.responses import PlainTextResponse
 import json
 from auth import get_current_user
 
-current_user = await get_current_user() ## Burada await kullanmaya gerek var mı?
+current_user = get_current_user() ## Burada await kullanmaya gerek var mı?
 USER_ID = current_user["user_id"]
 
 class PurchaseData(BaseModel):
