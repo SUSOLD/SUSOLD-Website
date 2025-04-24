@@ -69,8 +69,8 @@ class User(BaseModel):
     photo: List[str] = []                   #input
     credit_cards: List[creditCard] = []     #input
     addresses: List[str] = []               #input
+    isManager: bool = False                 #input
 
-    isManager: bool = False
     isVerified: bool = False
     user_id: str                            # we will generate this!!!
 
@@ -133,4 +133,3 @@ class UserUpdate(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
-    isManager: Optional[bool] = False

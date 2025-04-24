@@ -1,6 +1,7 @@
 
 from pydantic import BaseModel, EmailStr
-
+from typing import List
+from UserProfile_backend.model import creditCard
 
 class UserRegisterModel(BaseModel):
     name: str                               #input
@@ -14,5 +15,3 @@ class UserRegisterModel(BaseModel):
 class UserLoginModel(BaseModel):
     email: EmailStr
     password: str
-
-

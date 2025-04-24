@@ -1,48 +1,31 @@
-from fastapi import APIRouter, HTTPException, status
-from user_model import UserRegisterModel, UserLoginModel
-from jwt_handler import create_access_token
-from bson import ObjectId
-from UserProfile_backend.model import creditCard
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
+from model import User, UserLogin
+from auth import authenticate_user, create_access_token, hash_password
 from database import users_collection
+from datetime import timedelta
 
+auth_router = APIRouter(prefix="/auth", tags=["auth"])
 
-router = APIRouter()
-
-
-# ✅ REGISTER
-@router.post("/register")
-async def register(user: UserRegisterModel):
-    existing_user = await users_collection.find_one({"email": user.email})
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email zaten kayıtlı.")
-
-    hashed_pw = hash_password(user.password)
+# USER REGISTERATION
+@auth_router.post("/register")
+async def register_user(user: User):
+    existing = await users_collection.find_one({"email": user.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered.")
     
-    user_data = {
-        "name": user.name,
-        "lastname" : user.lastname,
-        "email": user.email,
-        "addresses": user.addresses,
-        "password": hashed_pw,
-        "photo" : user.photo,
-        "credit_cards" : user.creditCards,
-        "isManager" : user.isManager
+    user.password = hash_password(user.password)
+    user_dict = user.model_dump()
+    await users_collection.insert_one(user_dict)
+    return {"message": "User registered successfully."}
 
-    }
 
-    result = await users_collection.insert_one(user_data)
+# USER LOGIN
+@auth_router.post("/token")
+async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = await authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    return {"message": "Kayıt başarılı", "user_id": str(result.inserted_id)}
-
-# ✅ LOGIN
-@router.post("/login")
-async def login(user: UserLoginModel):
-    db_user = await users_collection.find_one({"email": user.email})
-    if not db_user:
-        raise HTTPException(status_code=401, detail="Email veya şifre yanlış.")
-
-    if not verify_password(user.password, db_user["password"]):
-        raise HTTPException(status_code=401, detail="Email veya şifre yanlış.")
-
-    token = create_access_token({"sub": str(db_user["user_id"]), "email": db_user["email"]})
-    return {"access_token": token, "token_type": "bearer"}
+    access_token = create_access_token(data={"sub": str(user["user_id"])}) # USER_ID İLE DEĞİŞTİRDİM!!!!!
+    return {"access_token": access_token, "token_type": "bearer"}
