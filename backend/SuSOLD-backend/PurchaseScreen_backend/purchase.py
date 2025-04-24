@@ -5,7 +5,7 @@ from bson.objectid import ObjectId
 import random
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from database import orders, cart
+from database import users_collection, order_collection, cart_collection, item_collection
 from main import app
 from fastapi.responses import PlainTextResponse
 import json
