@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, HttpUrl
 from typing import Optional, List, Annotated
 from datetime import date
 
-ItemID = Annotated[str, Field(pattern=r'^item\d{3}$')]
+ItemID = Annotated[str, Field(pattern=r'^item\d{5}$')]
 ShortDescription = Annotated[str, Field(max_length=200)]
 
 class ProductCreate(BaseModel):
