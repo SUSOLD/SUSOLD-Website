@@ -1,8 +1,8 @@
 from bson import ObjectId
 from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
-from backend.database import item_collection
-from backend.HomePage_backend.app.schemas import ProductCreate, ProductUpdate
+from database import item_collection
+from HomePage_backend.app.schemas import ProductCreate, ProductUpdate
 from datetime import datetime, time
 
 router = APIRouter()
@@ -96,6 +96,7 @@ async def get_home_data(
 
     return {"featured_products": products}
 
+
 # ------------------------- GET by item_id -------------------------
 @router.get("/home/item/{item_id}")
 async def get_product_by_item_id(item_id: str):
@@ -105,6 +106,7 @@ async def get_product_by_item_id(item_id: str):
     product["_id"] = str(product["_id"])
     return product
 
+
 # ------------------------- GET by Title -------------------------
 @router.get("/home/title/{title}")
 async def get_product_id_by_title(title: str):
@@ -113,33 +115,73 @@ async def get_product_id_by_title(title: str):
         raise HTTPException(status_code=404, detail="Product not found")
     return {"item_id": product.get("item_id", str(product["_id"]))}
 
+
+
 # ------------------------- POST -------------------------
 @router.post("/home/")
 async def add_product(product: ProductCreate):
     product_dict = product.dict()
+    product_dict["image"] = str(product_dict["image"])
     if product_dict.get("warranty_expiry"):
         product_dict["warranty_expiry"] = datetime.combine(product_dict["warranty_expiry"], time.min)
     result = await item_collection.insert_one(product_dict)
     return {"message": "Product added successfully", "item_id": str(result.inserted_id)}
 
-# ------------------------- PUT -------------------------
+
+# ------------------------- PUT  -------------------------
 @router.put("/home/{item_id}")
 async def update_product(item_id: str, update_data: ProductUpdate):
-    update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
-    if "warranty_expiry" in update_dict and update_dict["warranty_expiry"]:
-        update_dict["warranty_expiry"] = datetime.combine(update_dict["warranty_expiry"], time.min)
+    existing_item = await item_collection.find_one({"item_id": item_id})
+    if not existing_item:
+        raise HTTPException(status_code=404, detail="Product not found")
 
-    result = await item_collection.update_one(
+    update_fields = {}
+
+    if update_data.title is not None:
+        update_fields["title"] = update_data.title
+    if update_data.description is not None:
+        update_fields["description"] = update_data.description
+    if update_data.category is not None:
+        update_fields["category"] = update_data.category
+    if update_data.sub_category is not None:
+        update_fields["sub_category"] = update_data.sub_category
+    if update_data.brand is not None:
+        update_fields["brand"] = update_data.brand
+    if update_data.price is not None:
+        update_fields["price"] = update_data.price
+    if update_data.condition is not None:
+        update_fields["condition"] = update_data.condition
+    if update_data.age is not None:
+        update_fields["age"] = update_data.age
+    if update_data.course is not None:
+        update_fields["course"] = update_data.course
+    if update_data.dorm is not None:
+        update_fields["dorm"] = update_data.dorm
+    if update_data.verified is not None:
+        update_fields["verified"] = update_data.verified
+    if update_data.warranty_status is not None:
+        update_fields["warranty_status"] = update_data.warranty_status
+    if update_data.inStock is not None:
+        update_fields["inStock"] = update_data.inStock
+    if update_data.available_now is not None:
+        update_fields["available_now"] = update_data.available_now
+    if update_data.isSold is not None:
+        update_fields["isSold"] = update_data.isSold
+    if update_data.returnable is not None:
+        update_fields["returnable"] = update_data.returnable
+    if update_data.image is not None:
+        update_fields["image"] = str(update_data.image)
+
+    update_fields["item_id"] = item_id
+
+    await item_collection.update_one(
         {"item_id": item_id},
-        {"$set": update_dict}
+        {"$set": update_fields}
     )
 
-    if result.modified_count == 1:
-        return {"message": "Product updated successfully"}
-    elif result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Product not found")
-    else:
-        return {"message": "No changes made"}
+    return {"message": "Product updated successfully", "item_id": item_id}
+
+
 
 # ------------------------- DELETE -------------------------
 @router.delete("/home/{item_id}")
