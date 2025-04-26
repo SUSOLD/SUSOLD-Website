@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, HttpUrl
-from typing import Optional, List, Annotated
+from typing import Optional, Annotated
 from datetime import date
 
 ItemID = Annotated[str, Field(pattern=r'^item\d{5}$')]
@@ -7,7 +7,6 @@ ShortDescription = Annotated[str, Field(max_length=200)]
 
 class ProductCreate(BaseModel):
     title: str
-    description: ShortDescription
     category: str
     sub_category: Optional[str] = None
     brand: str
@@ -22,9 +21,9 @@ class ProductCreate(BaseModel):
     available_now: Optional[bool] = None
     isSold: Optional[bool] = None
     returnable: Optional[bool] = None
+    description: ShortDescription
     image: Optional[str] = None
     item_id: ItemID
-
 
 class ProductUpdate(BaseModel):
     title: Optional[str] = None
@@ -43,4 +42,5 @@ class ProductUpdate(BaseModel):
     available_now: Optional[bool] = None
     isSold: Optional[bool] = None
     returnable: Optional[bool] = None
+    description: Optional[ShortDescription] = None
     image: Optional[str] = None
