@@ -118,6 +118,7 @@ async def get_product_id_by_title(title: str):
 
 
 # ------------------------- POST -------------------------
+# profile kisminda add product -> my offerings
 @router.post("/home/")
 async def add_product(product: ProductCreate):
     product_dict = product.dict()
@@ -184,6 +185,7 @@ async def update_product(item_id: str, update_data: ProductUpdate):
 
 
 # ------------------------- DELETE -------------------------
+# TODO : offerings delete -> profile ksiminda my offeringste olmali 
 @router.delete("/home/{item_id}")
 async def delete_product(item_id: str):
     result = await item_collection.delete_one({"item_id": item_id})

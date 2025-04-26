@@ -77,7 +77,8 @@ async def get_my_feedbacks(current_user: dict = Depends(get_current_user)):
         # Handle comment display
         if fb.get("comment") and not fb.get("isCommentVerified", False):
             fb["comment"] = "no comment"
-        
+        if fb.get("comment") == None:
+            fb["comment"] = "no comment"
         feedback_list.append({
             "rating": fb.get("rating"),
             "comment": fb.get("comment"),
