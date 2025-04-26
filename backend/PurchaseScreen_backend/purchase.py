@@ -57,10 +57,9 @@ def complete_purchase(data: PurchaseData, current_user: dict = Depends(get_curre
 
     cart_collection.delete_many({"user_id": user_id})
 
-    ## burası için deliveryStatus attribute'unun item_collection'a eklenmiş olması lazım.
     item_collection.update_many(
     {"item_id": {"$in": item_ids}},    # filter
-    {"$set": {"deliveryStatus": "processing"}}  # update
+    {"$set": {"isSold": "processing"}}  # update
     )
 
     message = (
@@ -98,3 +97,5 @@ def get_cart_items(current_user: dict = Depends(get_current_user)):
     items = list(item_collection.find({"item_id": {"$in": item_ids}}, {"_id": 0, "item_name": 1}))
 
     return [item["item_name"] for item in items]
+
+
