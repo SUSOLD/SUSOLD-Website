@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const ProductList = ({ items, searchTerm, activeTab, activeCategory }) => {
+const ProductList = ({ items, searchTerm, activeTab, activeCategory, isLoggedIn }) => {
   const navigate = useNavigate();
 
   const filtered = items.filter((item) => {
@@ -26,7 +26,7 @@ const ProductList = ({ items, searchTerm, activeTab, activeCategory }) => {
           <div
             key={item.item_id}
             style={styles.card}
-            onClick={() => navigate(`/item/${item.item_id}`)} // ✅ clickable
+            onClick={() => navigate(`/item/${item.item_id}`)} // ✅ Clickable
           >
             <img
               src={item.image}
@@ -45,13 +45,19 @@ const ProductList = ({ items, searchTerm, activeTab, activeCategory }) => {
 
 const styles = {
   products: {
-    marginTop: 20, padding: 10
+    marginTop: 20,
+    padding: 10
   },
   productGrid: {
-    display: 'flex', gap: 20, flexWrap: 'wrap'
+    display: 'flex',
+    gap: 20,
+    flexWrap: 'wrap'
   },
   card: {
-    border: '1px solid black', padding: 10, width: 150, textAlign: 'center',
+    border: '1px solid black',
+    padding: 10,
+    width: 150,
+    textAlign: 'center',
     cursor: 'pointer'
   }
 };
