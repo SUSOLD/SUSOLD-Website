@@ -5,28 +5,50 @@ const ProductDetail = () => {
   const { itemId } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     fetch(`http://127.0.0.1:8001/api/home/item/${itemId}`)
       .then(res => res.json())
       .then(data => setProduct(data))
       .catch(err => console.error('Error loading product:', err));
+
+    const token = localStorage.getItem('token');
+    setIsLoggedIn(!!token);
   }, [itemId]);
 
-  const handleDelete = async () => {
-    const confirmed = window.confirm('Are you sure you want to delete this item?');
-    if (!confirmed) return;
+  const handleAddToFavorites = async () => {
+    if (!isLoggedIn) {
+      alert('Please login to add favorites.');
+      navigate('/login');
+      return;
+    }
 
-    const res = await fetch(`http://127.0.0.1:8001/api/home/${itemId}`, {
-      method: 'DELETE',
+    await fetch(`http://127.0.0.1:8001/api/favorites/${itemId}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      }
     });
 
-    if (res.ok) {
-      alert('Product deleted!');
-      navigate('/');
-    } else {
-      alert('Failed to delete product.');
+    alert('Added to favorites!');
+  };
+
+  const handleAddToBasket = async () => {
+    if (!isLoggedIn) {
+      alert('Please login to add to basket.');
+      navigate('/login');
+      return;
     }
+
+    await fetch(`http://127.0.0.1:8001/api/basket/${itemId}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+
+    alert('Added to basket!');
   };
 
   if (!product) return <p>Loading...</p>;
@@ -46,38 +68,31 @@ const ProductDetail = () => {
       <p><b>Verified:</b> {product.verified ? 'Yes' : 'No'}</p>
       <p><b>Returnable:</b> {product.returnable ? 'Yes' : 'No'}</p>
 
-      <button
-        onClick={handleDelete}
-        style={{
-          marginTop: '20px',
-          backgroundColor: 'red',
-          color: 'white',
-          padding: '10px 20px',
-          border: 'none',
-          borderRadius: '8px',
-          cursor: 'pointer'
-        }}
-      >
-        Delete Product
-      </button>
-
-      <button
-        onClick={() => navigate(`/edit/${itemId}`)}
-        style={{
-          marginTop: '20px',
-          backgroundColor: '#444',
-          color: 'white',
-          padding: '10px 20px',
-          border: 'none',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          marginLeft: '10px'
-        }}
-      >
-        Edit Product
-      </button>
+      <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+        <button onClick={handleAddToFavorites} style={styles.buttonSecondary}>Add to Favorites</button>
+        <button onClick={handleAddToBasket} style={styles.buttonPrimary}>Add to Basket</button>
+      </div>
     </div>
   );
+};
+
+const styles = {
+  buttonPrimary: {
+    backgroundColor: '#28a745',
+    color: 'white',
+    padding: '10px 20px',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer'
+  },
+  buttonSecondary: {
+    backgroundColor: '#007bff',
+    color: 'white',
+    padding: '10px 20px',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer'
+  }
 };
 
 export default ProductDetail;
