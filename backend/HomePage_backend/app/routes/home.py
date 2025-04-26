@@ -1,14 +1,14 @@
 from bson import ObjectId
 from fastapi import APIRouter, Query, HTTPException, Depends
 from typing import Optional
-from backend.database import item_collection, users_collection
-from backend.HomePage_backend.app.schemas import ProductCreate, ProductUpdate
+from database import item_collection, users_collection
+from HomePage_backend.app.schemas import ProductCreate, ProductUpdate
 from datetime import datetime, time
-from backend.registerloginbackend.jwt_handler import get_current_user
+from registerloginbackend.jwt_handler import get_current_user
 
 router = APIRouter()
 
-# ------------------------- GET: List Products (Homepage - PUBLIC) -------------------------
+# ------------------------- GET: List Products -------------------------
 @router.get("/home/")
 async def get_home_data(
     title: Optional[str] = Query(None),
@@ -23,14 +23,14 @@ async def get_home_data(
     course: Optional[bool] = Query(None),
     dorm: Optional[bool] = Query(None),
     verified: Optional[bool] = Query(None),
-    inStock: Optional[bool] = Query(None),
+    inStock: Optional[str] = Query(None),        
     available_now: Optional[bool] = Query(None),
-    isSold: Optional[bool] = Query(None),
+    isSold: Optional[str] = Query(None),          
     returnable: Optional[bool] = Query(None),
     description: Optional[str] = Query(None, max_length=200),
     image: Optional[str] = Query(None),
     item_id: Optional[str] = Query(None),
-    sort_by: Optional[str] = Query(None)
+    sort_by: Optional[str] = Query(None),
 ):
     query = {}
 
@@ -60,11 +60,11 @@ async def get_home_data(
         query["dorm"] = dorm
     if verified is not None:
         query["verified"] = verified
-    if inStock is not None:
+    if inStock:
         query["inStock"] = inStock
     if available_now is not None:
         query["available_now"] = available_now
-    if isSold is not None:
+    if isSold:
         query["isSold"] = isSold
     if returnable is not None:
         query["returnable"] = returnable
@@ -122,15 +122,16 @@ async def get_product_id_by_title(title: str):
 async def add_product(product: ProductCreate, current_user: dict = Depends(get_current_user)):
     product_dict = product.dict()
     product_dict["image"] = str(product_dict.get("image"))
+    product_dict["user_id"] = current_user["user_id"]
 
-    product_dict["user_id"] = current_user["user_id"]  
+    if not product_dict.get("isSold"):
+        product_dict["isSold"] = "stillInStock"
 
     if product_dict.get("warranty_expiry"):
         product_dict["warranty_expiry"] = datetime.combine(product_dict["warranty_expiry"], time.min)
 
     await item_collection.insert_one(product_dict)
 
-    # Add to user's offeredProducts
     await users_collection.update_one(
         {"user_id": current_user["user_id"]},
         {"$push": {"offeredProducts": product_dict["item_id"]}}
