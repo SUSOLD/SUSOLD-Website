@@ -73,7 +73,17 @@ async def get_my_feedbacks(current_user: dict = Depends(get_current_user)):
     feedback_list = []
     async for fb in feedbacks:
         fb["_id"] = str(fb["_id"])
-        feedback_list.append(fb)
+        
+        # Handle comment display
+        if fb.get("comment") and not fb.get("isCommentVerified", False):
+            fb["comment"] = "no comment"
+        
+        feedback_list.append({
+            "rating": fb.get("rating"),
+            "comment": fb.get("comment"),
+            "_id": fb["_id"],
+        })
+
     return {"feedbacks_received": feedback_list}
 
 
@@ -86,7 +96,7 @@ async def get_unapproved_comments(current_user: dict = Depends(get_current_user)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    if not current_user.get("isManager", False):
+    if not user.get("isManager", False):
         raise HTTPException(status_code=403, detail="Not authorized to display comments.")
 
     feedbacks = await feedback_collection.find({"comment": {"$ne": None}, "isCommentVerified": False}).to_list(length=None)
@@ -107,7 +117,7 @@ async def approve_comment(feedback_id: str, current_user: dict = Depends(get_cur
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if not current_user.get("isManager", False):
+    if not user.get("isManager", False):
        raise HTTPException(status_code=403, detail="Not authorized to approve a comment.")
 
     try:
@@ -135,7 +145,7 @@ async def remove_comment(feedback_id: str, current_user: dict = Depends(get_curr
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if not current_user.get("isManager", False):
+    if not user.get("isManager", False):
         raise HTTPException(status_code=403, detail="Not authorized to remove comments.")
 
     try:
