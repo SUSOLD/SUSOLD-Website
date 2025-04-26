@@ -22,7 +22,7 @@ class ProductCreate(BaseModel):
     available_now: Optional[bool] = None
     isSold: Optional[bool] = None
     returnable: Optional[bool] = None
-    image: Optional[HttpUrl] = None
+    image: Optional[str] = None
     item_id: ItemID
 
 
@@ -43,5 +43,4 @@ class ProductUpdate(BaseModel):
     available_now: Optional[bool] = None
     isSold: Optional[bool] = None
     returnable: Optional[bool] = None
-    image: Optional[HttpUrl] = None
-    item_id: Optional[ItemID] = None
+    image: Optional[str] = None
