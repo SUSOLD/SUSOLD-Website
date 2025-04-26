@@ -1,21 +1,17 @@
 from fastapi import APIRouter, HTTPException, Depends
 from bson import ObjectId
-from backend.database import users_collection, item_collection
-from backend.registerloginbackend.jwt_handler import get_current_user
+from database import users_collection, item_collection
+from registerloginbackend.jwt_handler import get_current_user
 
 router = APIRouter()
 
 # ------------------------- GET Basket Items -------------------------
 @router.get("/basket")
 async def get_basket(current_user: dict = Depends(get_current_user)):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Authentication required to access basket.")
-
-    user_id = current_user.get("user_id")
+    user_id = current_user["user_id"]
     user = await users_collection.find_one({"user_id": user_id})
-
-    if not user or "basket" not in user:
-        return {"basket": []}
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
     item_ids = user.get("basket", [])
     items = []
@@ -27,57 +23,30 @@ async def get_basket(current_user: dict = Depends(get_current_user)):
 
     return {"basket": items}
 
-# ------------------------- POST Add/Toggle Item -------------------------
+# ------------------------- POST Add to Basket -------------------------
 @router.post("/basket/{item_id}")
-async def toggle_basket_item(item_id: str, current_user: dict = Depends(get_current_user)):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Authentication required to modify basket.")
+async def add_to_basket(item_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = current_user["user_id"]
 
-    user_id = current_user.get("user_id")
-    user = await users_collection.find_one({"user_id": user_id})
-
-    if not user:
-        await users_collection.insert_one({
-            "user_id": user_id,
-            "basket": [item_id],
-            "favorites": [],
-            "offeredProducts": []
-        })
-        return {"basket": [item_id]}
-
-    current_basket = set(user.get("basket", []))
-
-    if item_id in current_basket:
-        current_basket.remove(item_id)
-    else:
-        current_basket.add(item_id)
+    product = await item_collection.find_one({"item_id": item_id})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
 
     await users_collection.update_one(
         {"user_id": user_id},
-        {"$set": {"basket": list(current_basket)}}
+        {"$addToSet": {"basket": item_id}}
     )
 
-    return {"basket": list(current_basket)}
+    return {"message": "Item added to basket"}
 
-# ------------------------- DELETE Remove Specific -------------------------
+# ------------------------- DELETE Remove from Basket -------------------------
 @router.delete("/basket/{item_id}")
 async def remove_from_basket(item_id: str, current_user: dict = Depends(get_current_user)):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Authentication required to modify basket.")
+    user_id = current_user["user_id"]
 
-    user_id = current_user.get("user_id")
-    user = await users_collection.find_one({"user_id": user_id})
+    await users_collection.update_one(
+        {"user_id": user_id},
+        {"$pull": {"basket": item_id}}
+    )
 
-    if not user or "basket" not in user:
-        return {"message": "User not found or basket empty."}
-
-    basket = set(user["basket"])
-    if item_id in basket:
-        basket.remove(item_id)
-        await users_collection.update_one(
-            {"user_id": user_id},
-            {"$set": {"basket": list(basket)}}
-        )
-        return {"message": "Removed from basket"}
-
-    return {"message": "Item not in basket"}
+    return {"message": "Item removed from basket"}
