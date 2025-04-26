@@ -1,13 +1,14 @@
 from bson import ObjectId
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Depends
 from typing import Optional
-from backend.database import item_collection
-from backend.HomePage_backend.app.schemas import ProductCreate, ProductUpdate
+from database import item_collection, users_collection
+from HomePage_backend.app.schemas import ProductCreate, ProductUpdate
 from datetime import datetime, time
+from registerloginbackend.jwt_handler import get_current_user
 
 router = APIRouter()
 
-# ------------------------- GET: List Products -------------------------
+# ------------------------- GET: List Products (Homepage - PUBLIC) -------------------------
 @router.get("/home/")
 async def get_home_data(
     title: Optional[str] = Query(None),
@@ -97,7 +98,7 @@ async def get_home_data(
     return {"featured_products": products}
 
 
-# ------------------------- GET by item_id -------------------------
+# ------------------------- GET: Product by item_id (PUBLIC) -------------------------
 @router.get("/home/item/{item_id}")
 async def get_product_by_item_id(item_id: str):
     product = await item_collection.find_one({"item_id": item_id})
@@ -107,7 +108,7 @@ async def get_product_by_item_id(item_id: str):
     return product
 
 
-# ------------------------- GET by Title -------------------------
+# ------------------------- GET: Product by title (PUBLIC) -------------------------
 @router.get("/home/title/{title}")
 async def get_product_id_by_title(title: str):
     product = await item_collection.find_one({"title": title})
@@ -116,80 +117,65 @@ async def get_product_id_by_title(title: str):
     return {"item_id": product.get("item_id", str(product["_id"]))}
 
 
-
-# ------------------------- POST -------------------------
-# profile kisminda add product -> my offerings
+# ------------------------- POST: Add Product (LOGIN REQUIRED) -------------------------
 @router.post("/home/")
-async def add_product(product: ProductCreate):
+async def add_product(product: ProductCreate, current_user: dict = Depends(get_current_user)):
     product_dict = product.dict()
-    product_dict["image"] = str(product_dict["image"])
+    product_dict["image"] = str(product_dict.get("image"))
+    product_dict["user_id"] = current_user["user_id"]  # Save owner info
+
     if product_dict.get("warranty_expiry"):
         product_dict["warranty_expiry"] = datetime.combine(product_dict["warranty_expiry"], time.min)
-    result = await item_collection.insert_one(product_dict)
-    return {"message": "Product added successfully", "item_id": str(result.inserted_id)}
+
+    await item_collection.insert_one(product_dict)
+
+    # Add item_id to user's offeredProducts
+    await users_collection.update_one(
+        {"user_id": current_user["user_id"]},
+        {"$push": {"offeredProducts": product_dict["item_id"]}}
+    )
+
+    return {"message": "Product added successfully", "item_id": product_dict["item_id"]}
 
 
-# ------------------------- PUT  -------------------------
+# ------------------------- PUT: Update Product (LOGIN REQUIRED) -------------------------
 @router.put("/home/{item_id}")
-async def update_product(item_id: str, update_data: ProductUpdate):
+async def update_product(item_id: str, update_data: ProductUpdate, current_user: dict = Depends(get_current_user)):
     existing_item = await item_collection.find_one({"item_id": item_id})
     if not existing_item:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    update_fields = {}
+    if existing_item.get("user_id") != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this product")
 
-    if update_data.title is not None:
-        update_fields["title"] = update_data.title
-    if update_data.description is not None:
-        update_fields["description"] = update_data.description
-    if update_data.category is not None:
-        update_fields["category"] = update_data.category
-    if update_data.sub_category is not None:
-        update_fields["sub_category"] = update_data.sub_category
-    if update_data.brand is not None:
-        update_fields["brand"] = update_data.brand
-    if update_data.price is not None:
-        update_fields["price"] = update_data.price
-    if update_data.condition is not None:
-        update_fields["condition"] = update_data.condition
-    if update_data.age is not None:
-        update_fields["age"] = update_data.age
-    if update_data.course is not None:
-        update_fields["course"] = update_data.course
-    if update_data.dorm is not None:
-        update_fields["dorm"] = update_data.dorm
-    if update_data.verified is not None:
-        update_fields["verified"] = update_data.verified
-    if update_data.warranty_status is not None:
-        update_fields["warranty_status"] = update_data.warranty_status
-    if update_data.inStock is not None:
-        update_fields["inStock"] = update_data.inStock
-    if update_data.available_now is not None:
-        update_fields["available_now"] = update_data.available_now
-    if update_data.isSold is not None:
-        update_fields["isSold"] = update_data.isSold
-    if update_data.returnable is not None:
-        update_fields["returnable"] = update_data.returnable
-    if update_data.image is not None:
-        update_fields["image"] = str(update_data.image)
-
-    update_fields["item_id"] = item_id
+    update_fields = update_data.dict(exclude_unset=True)
+    if "image" in update_fields:
+        update_fields["image"] = str(update_fields["image"])
 
     await item_collection.update_one(
         {"item_id": item_id},
         {"$set": update_fields}
     )
 
-    return {"message": "Product updated successfully", "item_id": item_id}
+    return {"message": "Product updated successfully"}
 
 
-
-# ------------------------- DELETE -------------------------
-# TODO : offerings delete -> profile ksiminda my offeringste olmali 
+# ------------------------- DELETE: Delete Product (LOGIN REQUIRED) -------------------------
 @router.delete("/home/{item_id}")
-async def delete_product(item_id: str):
-    result = await item_collection.delete_one({"item_id": item_id})
-    if result.deleted_count == 1:
-        return {"message": "Product deleted successfully"}
-    else:
+async def delete_product(item_id: str, current_user: dict = Depends(get_current_user)):
+    existing_item = await item_collection.find_one({"item_id": item_id})
+    if not existing_item:
         raise HTTPException(status_code=404, detail="Product not found")
+
+    if existing_item.get("user_id") != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this product")
+
+    await item_collection.delete_one({"item_id": item_id})
+
+    # Also remove from user's offeredProducts
+    await users_collection.update_one(
+        {"user_id": current_user["user_id"]},
+        {"$pull": {"offeredProducts": item_id}}
+    )
+
+    return {"message": "Product deleted successfully"}
