@@ -1,14 +1,13 @@
 import axios from 'axios';
 
-// Create an axios instance with baseURL pointing to your backend
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api', // Adjust the URL according to your backend setup
+  baseURL: 'http://127.0.0.1:8001/api', // ✅ your correct backend baseURL (port 8001)
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Add request interceptor to include token if available
+// Automatically attach the token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -17,41 +16,45 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// API functions to interact with backend
+// --- AUTH ---
 export const authAPI = {
-  login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
-  
+  login: (formData) => api.post('/auth/token', formData),  // must send username/password as form data
 };
 
+// --- USER PROFILE ---
 export const userAPI = {
-  getProfile: () => api.get('/user/profile'),
-  updateProfile: (userData) => api.put('/user/profile', userData),
-  
+  getUserData: () => api.get('/get-user-data'),
+  getMyFavorites: () => api.get('/my_favorites'),
+  getMyOfferings: () => api.get('/my_offerings'),
+  updateUserInfo: (data) => api.put('/update_user_info', data),
 };
 
+// --- HOME PAGE & ITEMS ---
 export const itemAPI = {
-  getItems: (category = 'All', searchTerm = '') => 
-    api.get('/items', { params: { category, searchTerm } }), // Fetch items by category and search term
-  getItemDetails: (itemId) => api.get(`/items/${itemId}`), // Fetch details for a specific item
-  addItemToCart: (itemId) => api.post(`/items/${itemId}/add-to-cart`), // Add item to cart
-  removeItemFromCart: (itemId) => api.delete(`/items/${itemId}/remove-from-cart`), // Remove item from cart
+  getItems: () => api.get('/home/'),               // get all items
+  getItemById: (itemId) => api.get(`/home/item/${itemId}`),
+  getItemIdByTitle: (title) => api.get(`/home/title/${title}`),
+  createItem: (itemData) => api.post('/home/', itemData),
+  updateItem: (itemId, itemData) => api.put(`/home/${itemId}`, itemData),
+  deleteItem: (itemId) => api.delete(`/home/${itemId}`),
 };
 
-export const categoryAPI = {
-  getCategories: () => api.get('/categories'), // Fetch available categories
+// --- FAVORITES ---
+export const favoritesAPI = {
+  getFavorites: () => api.get('/favorites'),
+  toggleFavorite: (itemId) => api.post(`/favorites/${itemId}`),
+  removeFavorite: (itemId) => api.delete(`/favorites/${itemId}`),
 };
 
-export const cartAPI = {
-  getCartItems: () => api.get('/cart'), // Get all items in the cart
-  updateCartItem: (itemId, quantity) => 
-    api.put(`/cart/${itemId}`, { quantity }), // Update item quantity in the cart
-  removeFromCart: (itemId) => api.delete(`/cart/${itemId}`), // Remove item from cart
+// --- BASKET ---
+export const basketAPI = {
+  getBasket: () => api.get('/basket'),
+  toggleBasketItem: (itemId) => api.post(`/basket/${itemId}`),
+  removeBasketItem: (itemId) => api.delete(`/basket/${itemId}`),
 };
 
 export default api;
