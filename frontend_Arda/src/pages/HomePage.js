@@ -23,6 +23,7 @@ const HomePage = ({
       .catch(error => console.error('Error fetching data:', error));
   }, []);
 
+
   const filteredItems = items
     .filter(item => item.title.toLowerCase().includes(searchTerm.toLowerCase()))
     .filter(item => activeCategory === 'All' || item.category === activeCategory);
@@ -37,10 +38,11 @@ const HomePage = ({
       <MainCarousel />
       <TabMenu activeTab={activeTab} setActiveTab={setActiveTab} />
       <ProductList
-        items={filteredItems}  
+        items={filteredItems}
         searchTerm={searchTerm}
         activeTab={activeTab}
         activeCategory={activeCategory}
+        isLoggedIn={isLoggedIn} // ✅ Pass login info
       />
     </div>
   );
