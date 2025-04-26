@@ -21,7 +21,7 @@ const AddProduct = () => {
     warranty_status: 'No Warranty',
     inStock: true,
     available_now: true,
-    isSold: false,
+    isSold: 'stillInStock', // Changed from boolean to string enum
     returnable: false,
     description: '',
     image: null
@@ -62,6 +62,8 @@ const AddProduct = () => {
         item_id: `item${randomId}`,
         price: Number(formData.price),
         age: Number(formData.age),
+        // Ensure isSold is set to stillInStock for new products
+        isSold: 'stillInStock'
       };
 
       // If there's an image, convert it to base64 string as required by backend

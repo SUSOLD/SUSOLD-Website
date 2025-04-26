@@ -1,10 +1,10 @@
 from bson import ObjectId
 from fastapi import APIRouter, Query, HTTPException, Depends
 from typing import Optional
-from database import item_collection, users_collection
-from HomePage_backend.app.schemas import ProductCreate, ProductUpdate
+from backend.database import item_collection, users_collection
+from backend.HomePage_backend.app.schemas import ProductCreate, ProductUpdate
 from datetime import datetime, time
-from registerloginbackend.jwt_handler import get_current_user
+from backend.registerloginbackend.jwt_handler import get_current_user
 
 router = APIRouter()
 

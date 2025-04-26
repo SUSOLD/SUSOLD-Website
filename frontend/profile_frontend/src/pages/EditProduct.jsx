@@ -22,7 +22,7 @@ const EditProduct = () => {
     warranty_status: 'No Warranty',
     inStock: true,
     available_now: true,
-    isSold: false,
+    isSold: 'stillInStock', // Changed from boolean to string enum
     returnable: false,
     description: '',
     image: null
@@ -51,7 +51,10 @@ const EditProduct = () => {
           warranty_status: productData.warranty_status || 'No Warranty',
           inStock: productData.inStock || true,
           available_now: productData.available_now || true,
-          isSold: productData.isSold || false,
+          // Handle the case where isSold might still be a boolean in some stored items
+          isSold: typeof productData.isSold === 'boolean' 
+            ? (productData.isSold ? 'processing' : 'stillInStock')
+            : (productData.isSold || 'stillInStock'),
           returnable: productData.returnable || false,
           description: productData.description || '',
           image: productData.image || null
@@ -273,6 +276,22 @@ const EditProduct = () => {
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+
+            {/* New Order Status Dropdown for Seller */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Order Status</label>
+              <select 
+                name="isSold"
+                value={formData.isSold}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="stillInStock">Still In Stock</option>
+                <option value="processing">Processing</option>
+                <option value="inTransit">In Transit</option>
+                <option value="delivered">Delivered</option>
+              </select>
             </div>
 
             <div className="mb-4">
