@@ -24,6 +24,7 @@ class ProductCreate(BaseModel):
     description: ShortDescription
     image: Optional[str] = None
     item_id: ItemID
+    user_id: Optional[str] = None 
 
 class ProductUpdate(BaseModel):
     title: Optional[str] = None
