@@ -268,7 +268,7 @@ async def remove_from_offerings(product_id: str, current_user: dict = Depends(ge
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    updated_offerings = [p for p in user.get("offeredProducts", []) if str(p["item_id"]) != product_id]
+    updated_offerings = [p for p in user.get("offeredProducts", []) if str(p) != product_id]
     if len(updated_offerings) == len(user.get("offeredProducts", [])):
         raise HTTPException(status_code=400, detail="Product not found in offerings")
 
