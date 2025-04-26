@@ -166,6 +166,20 @@ async def remove_comment(feedback_id: str, current_user: dict = Depends(get_curr
 
 
 # -------------------------------
+# Display isManager value of the user
+# -------------------------------
+@main_router.get("/is_manager")
+async def is_user_manager(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    is_manager = user.get("isManager", False)
+    return {"is_manager": is_manager}
+
+
+
+# -------------------------------
 # Return name and lastname of current user
 # -------------------------------
 @main_router.get("/my_name")
