@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import HttpUrl
 from bson import ObjectId
 from datetime import datetime, timezone
 from backend.database import users_collection, feedback_collection, item_collection
-from backend.registerloginbackend.jwt_handler import get_current_user, hash_password
+from backend.registerloginbackend.jwt_handler import get_current_user, get_password_hash
 from backend.UserProfile_backend.model import FeedbackInput, UserUpdate
 from backend.HomePage_backend.app.schemas import ProductCreate as Product
 
@@ -220,6 +221,10 @@ async def get_my_offerings(current_user: dict = Depends(get_current_user)):
 # -------------------------------
 @main_router.post("/add_to_offerings")
 async def add_to_offerings(product: Product, current_user: dict = Depends(get_current_user)):
+
+    if isinstance(product_dict.get("image"), HttpUrl):
+        product_dict["image"] = str(product_dict["image"])
+
     product_dict = product.model_dump()
     insert_result = await item_collection.insert_one(product_dict)
     product_id = insert_result.inserted_id
@@ -273,7 +278,19 @@ async def get_my_favorites(current_user: dict = Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return {"favorites": user.get("favorites", [])}
+    favorite_ids = user.get("favorites", [])
+
+    # Fetch all favorite products by their item_id
+    favorite_products = []
+    for item_id in favorite_ids:
+        product = await item_collection.find_one({"item_id": item_id})
+        if product:
+            # 🔥 Convert _id to string for JSON
+            if "_id" in product and isinstance(product["_id"], ObjectId):
+                product["_id"] = str(product["_id"])
+            favorite_products.append(product)
+
+    return {"favorites": favorite_products}
 
 
 # -------------------------------
@@ -281,7 +298,7 @@ async def get_my_favorites(current_user: dict = Depends(get_current_user)):
 # -------------------------------
 @main_router.post("/add_to_favorites")
 async def add_to_favorites(product_id: str, current_user: dict = Depends(get_current_user)):
-    product = await item_collection.find_one({"item_id": ObjectId(product_id)})
+    product = await item_collection.find_one({"item_id": product_id})  # 🔥 SEARCH BY item_id
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
@@ -292,10 +309,10 @@ async def add_to_favorites(product_id: str, current_user: dict = Depends(get_cur
     if "favorites" not in user:
         user["favorites"] = []
 
-    if any(str(p["item_id"]) == product_id for p in user["favorites"]):
+    if product_id in user["favorites"]:
         raise HTTPException(status_code=400, detail="Product already in favorites")
 
-    user["favorites"].append(product)
+    user["favorites"].append(product_id)  # 🔥 only save item_id
     await users_collection.update_one(
         {"user_id": current_user["user_id"]},
         {"$set": {"favorites": user["favorites"]}}
@@ -313,10 +330,12 @@ async def remove_from_favorites(product_id: str, current_user: dict = Depends(ge
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    updated_favorites = [p for p in user.get("favorites", []) if str(p["item_id"]) != product_id]
+    favorites = user.get("favorites", [])
 
-    if len(updated_favorites) == len(user.get("favorites", [])):
+    if product_id not in favorites:
         raise HTTPException(status_code=400, detail="Product not found in favorites")
+
+    updated_favorites = [p for p in favorites if p != product_id]
 
     await users_collection.update_one(
         {"user_id": current_user["user_id"]},
@@ -345,7 +364,7 @@ async def update_user_info(update_data: UserUpdate, current_user: dict = Depends
         raise HTTPException(status_code=400, detail=str(e))
 
     if "password" in update_dict:
-        update_dict["password"] = hash_password(update_dict["password"])
+        update_dict["password"] = get_password_hash(update_dict["password"])
 
     await users_collection.update_one({"user_id": current_user["user_id"]}, {"$set": update_dict})
 

@@ -1,48 +1,63 @@
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
-from backend.UserProfile_backend.model import User, UserLogin
-from backend.registerloginbackend.jwt_handler import authenticate_user, create_access_token, hash_password
+from fastapi import APIRouter, HTTPException, Depends
 from backend.database import users_collection
+from fastapi.security import OAuth2PasswordRequestForm
+from backend.registerloginbackend.jwt_handler import get_password_hash , verify_password, create_access_token, get_current_user, authenticate_user
+from pydantic import EmailStr
 from datetime import timedelta
+from typing import List
 import random
 
-auth_router = APIRouter(prefix="/auth", tags=["auth"])
+from backend.registerloginbackend.user_model import UserRegisterModel, UserLoginModel
 
-async def generate_unique_user_id(users_collection):
-    # Get all existing user_ids as a set for quick lookup
-    existing_ids = {
-        doc["user_id"]
-        async for doc in users_collection.find({}, {"user_id": 1, "_id": 0})
-    }
+auth_router = APIRouter()
 
+async def generate_unique_user_id():
     while True:
-        user_id_number = random.randint(0, 99999)
-        user_id = f"user{user_id_number:05d}"
-        if user_id not in existing_ids:
+        user_id = "user" + str(random.randint(10000, 99999))
+        existing_user = await users_collection.find_one({"user_id": user_id})
+        if not existing_user:
             return user_id
 
-# USER REGISTERATION
+
 @auth_router.post("/register")
-async def register_user(user: User):
-    existing = await users_collection.find_one({"email": user.email})
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered.")
+async def register(user: UserRegisterModel):
+    user_email = user.email.lower()  # normalize email
 
-    user.password = hash_password(user.password)
-    user_dict = user.model_dump()
+    if await users_collection.find_one({"email": user_email}):
+        raise HTTPException(status_code=400, detail="Email already exists")
+    
+    # Start with the data from UserRegisterModel
+    user_data = user.model_dump()
+    user_data["email"] = user_email
+    user_data["password"] = get_password_hash(user.password)
+    
+    # Generate a unique user ID
+    user_data["user_id"] = await generate_unique_user_id()
+    
+    # Add all the default values that are in the User model but not in UserRegisterModel
+    user_data["isVerified"] = False
+    user_data["rating"] = 0.0
+    user_data["rate_number"] = 0
+    user_data["feedbackReceived"] = []
+    user_data["favorites"] = []
+    user_data["offeredProducts"] = []
 
-    user_dict["user_id"] = await generate_unique_user_id(users_collection)
+    await users_collection.insert_one(user_data)
 
-    await users_collection.insert_one(user_dict)
-    return {"message": "User registered successfully."}
+    return {
+        "message": "User registered successfully",
+        "user_id": user_data["user_id"],
+        "email": user_data["email"]
+    }
 
 
-# USER LOGIN
+
 @auth_router.post("/token")
 async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
+    # Note: form_data.username is actually expected to be an email address
     user = await authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    access_token = create_access_token(data={"sub": str(user["user_id"])}) # USER_ID İLE DEĞİŞTİRDİM!!!!!
+    access_token = create_access_token(data={"sub": user["email"]})  # Changed to use email as subject instead of ID
     return {"access_token": access_token, "token_type": "bearer"}
