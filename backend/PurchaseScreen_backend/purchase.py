@@ -74,21 +74,6 @@ def complete_purchase(data: PurchaseData, current_user: dict = Depends(get_curre
     return {"message": message}
 
 
-@router.get("/print-database", response_class=PlainTextResponse)
-def print_database():
-    users = list(users_collection.find({}, {"_id": 0}))
-    cart = list(cart_collection.find({}, {"_id": 0}))
-    items = list(item_collection.find({}, {"_id": 0}))
-    orders = list(order_collection.find({}, {"_id": 0}))
-
-    response = "\n--- USERS ---\n" + json.dumps(users, indent=2)
-    response += "\n\n--- CART ---\n" + json.dumps(cart, indent=2)
-    response += "\n\n--- ITEMS ---\n" + json.dumps(items, indent=2)
-    response += "\n\n--- ORDERS ---\n" + json.dumps(orders, indent=2)
-
-    return response
-
-
 @router.get("/get-cart-items")
 def get_cart_items(current_user: dict = Depends(get_current_user)):
     user_id = current_user["user_id"]
