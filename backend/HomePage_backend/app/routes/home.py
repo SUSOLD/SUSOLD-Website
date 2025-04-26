@@ -122,20 +122,22 @@ async def get_product_id_by_title(title: str):
 async def add_product(product: ProductCreate, current_user: dict = Depends(get_current_user)):
     product_dict = product.dict()
     product_dict["image"] = str(product_dict.get("image"))
-    product_dict["user_id"] = current_user["user_id"]  # Save owner info
+
+    product_dict["user_id"] = current_user["user_id"]  
 
     if product_dict.get("warranty_expiry"):
         product_dict["warranty_expiry"] = datetime.combine(product_dict["warranty_expiry"], time.min)
 
     await item_collection.insert_one(product_dict)
 
-    # Add item_id to user's offeredProducts
+    # Add to user's offeredProducts
     await users_collection.update_one(
         {"user_id": current_user["user_id"]},
         {"$push": {"offeredProducts": product_dict["item_id"]}}
     )
 
     return {"message": "Product added successfully", "item_id": product_dict["item_id"]}
+
 
 
 # ------------------------- PUT: Update Product (LOGIN REQUIRED) -------------------------
