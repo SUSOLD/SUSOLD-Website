@@ -23,7 +23,7 @@ async def get_home_data(
     course: Optional[bool] = Query(None),
     dorm: Optional[bool] = Query(None),
     verified: Optional[bool] = Query(None),
-    inStock: Optional[str] = Query(None),        
+    inStock: Optional[bool] = Query(None),        
     available_now: Optional[bool] = Query(None),
     isSold: Optional[str] = Query(None),          
     returnable: Optional[bool] = Query(None),
@@ -60,7 +60,7 @@ async def get_home_data(
         query["dorm"] = dorm
     if verified is not None:
         query["verified"] = verified
-    if inStock:
+    if inStock is not None:
         query["inStock"] = inStock
     if available_now is not None:
         query["available_now"] = available_now
