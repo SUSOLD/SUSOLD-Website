@@ -1,9 +1,15 @@
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 from typing import Optional, Annotated
-from datetime import date
+from enum import Enum 
 
 ItemID = Annotated[str, Field(pattern=r'^item\d{5}$')]
 ShortDescription = Annotated[str, Field(max_length=200)]
+
+class IsSoldStatus(str, Enum):  
+    stillInStock = "stillInStock"
+    processing = "processing"
+    inTransit = "inTransit"
+    delivered = "delivered"
 
 class ProductCreate(BaseModel):
     title: str
@@ -17,14 +23,14 @@ class ProductCreate(BaseModel):
     dorm: Optional[bool] = None
     verified: Optional[bool] = None
     warranty_status: Optional[str] = None
-    inStock: Optional[bool] = None
+    inStock: Optional[bool] = True
     available_now: Optional[bool] = None
-    isSold: Optional[bool] = None
+    isSold: Optional[IsSoldStatus] = IsSoldStatus.stillInStock  
     returnable: Optional[bool] = None
     description: ShortDescription
     image: Optional[str] = None
     item_id: ItemID
-    user_id: Optional[str] = None 
+    user_id: Optional[str] = None
 
 class ProductUpdate(BaseModel):
     title: Optional[str] = None
@@ -41,7 +47,6 @@ class ProductUpdate(BaseModel):
     warranty_status: Optional[str] = None
     inStock: Optional[bool] = None
     available_now: Optional[bool] = None
-    isSold: Optional[bool] = None
+    isSold: Optional[IsSoldStatus] = None  
     returnable: Optional[bool] = None
-    description: Optional[ShortDescription] = None
     image: Optional[str] = None
