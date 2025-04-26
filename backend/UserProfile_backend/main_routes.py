@@ -223,7 +223,13 @@ async def get_my_offerings(current_user: dict = Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return {"offerings": user.get("offeredProducts", [])}
+    offerings_cursor = item_collection.find({"user_id": current_user["user_id"]})
+    offerings = await offerings_cursor.to_list(length=None)
+
+    for offering in offerings:
+        offering["_id"] = str(offering["_id"])
+
+    return {"offerings": offerings}
 
 
 # -------------------------------
@@ -268,16 +274,15 @@ async def remove_from_offerings(product_id: str, current_user: dict = Depends(ge
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    updated_offerings = [p for p in user.get("offeredProducts", []) if str(p) != product_id]
-    if len(updated_offerings) == len(user.get("offeredProducts", [])):
-        raise HTTPException(status_code=400, detail="Product not found in offerings")
+    delete_result = await item_collection.delete_one({
+        "user_id": current_user["user_id"],
+        "item_id": product_id
+    })
 
-    await users_collection.update_one(
-        {"user_id": current_user["user_id"]},
-        {"$set": {"offeredProducts": updated_offerings}}
-    )
+    if delete_result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Product not found or not authorized to delete")
+
     return {"message": "Product removed from offerings"}
-
 
 # -------------------------------
 # Show favorite products
