@@ -57,6 +57,12 @@ def complete_purchase(data: PurchaseData, current_user: dict = Depends(get_curre
 
     cart_collection.delete_many({"user_id": user_id})
 
+    ## burası için deliveryStatus attribute'unun item_collection'a eklenmiş olması lazım.
+    item_collection.update_many(
+    {"item_id": {"$in": item_ids}},    # filter
+    {"$set": {"deliveryStatus": "processing"}}  # update
+    )
+
     message = (
         "Thank you for your purchase!\n\n"
         "The details of your purchase are as follows:\n\n"
