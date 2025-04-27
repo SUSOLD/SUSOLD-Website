@@ -1,34 +1,53 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
+import HomePage from './pages/HomePage'; 
+import UserProfile from './pages/UserProfile';
+import BasketPage from './pages/BasketPage';
+import AddProduct from './pages/AddProduct';
+import EditProduct from './pages/EditProduct';
 import LoginForm from './components/Auth/LoginForm';
 import RegisterForm from './components/Auth/RegisterForm';
-import UserProfile from './pages/UserProfile';
-import AddProduct from './pages/AddProduct';
-import EditProduct from './pages/EditProduct'; // Add this import
 import AuthService from './services/AuthService';
+import ProductDetail from './pages/ProductDetail';
+import PurchasePage from "./pages/PurchasePage";
+
 import './App.css';
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
   const isLoggedIn = AuthService.isLoggedIn();
-  
   if (!isLoggedIn) {
     return <Navigate to="/login" replace />;
   }
-  
   return children;
 };
 
 function App() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('Sales');
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [isLoggedIn, setIsLoggedIn] = useState(AuthService.isLoggedIn());
+
   return (
     <Router>
       <div className="app">
         <Routes>
-          {/* Login page */}
-          <Route path="/login" element={<LoginForm />} />
-
-          {/* Register page */}
-          <Route path="/register" element={<RegisterForm />} />
+          {/* Home page */}
+          <Route 
+            path="/" 
+            element={
+              <HomePage
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                activeCategory={activeCategory}
+                setActiveCategory={setActiveCategory}
+                isLoggedIn={isLoggedIn}
+              />
+            } 
+          />
 
           {/* Profile page (protected) */}
           <Route 
@@ -39,8 +58,18 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          
 
-          {/* Add Product page (protected) */}
+          {/* Basket page */}
+          <Route 
+            path="/basket" 
+            element={
+              AuthService.isLoggedIn() ? <PurchasePage /> : <BasketPage />
+            } 
+          />
+
+
+          {/* Add Product (protected) */}
           <Route 
             path="/add-product" 
             element={
@@ -50,7 +79,7 @@ function App() {
             } 
           />
 
-          {/* Edit Product page (protected) */}
+          {/* Edit Product (protected) */}
           <Route 
             path="/edit-product/:productId" 
             element={
@@ -60,10 +89,14 @@ function App() {
             } 
           />
 
-          {/* Home page redirect */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          {/* Login page */}
+          <Route path="/login" element={<LoginForm />} />
 
-          {/* 404 page */}
+          {/* Register page */}
+          <Route path="/register" element={<RegisterForm />} />
+          <Route path="/item/:itemId" element={<ProductDetail />} /> 
+
+          {/* 404 */}
           <Route path="*" element={
             <div className="not-found-container">
               <div className="not-found-content">

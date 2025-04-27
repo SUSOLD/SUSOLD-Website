@@ -134,3 +134,61 @@ export const approveComment = async (feedbackId) => {
 export const removeComment = async (feedbackId) => {
   return await api.delete(`/remove_comment/${feedbackId}`);
 };
+// --- AUTH ---
+export const authAPI = {
+  register: (userData) => api.post('/auth/register', userData),
+  login: (formData) => api.post('/auth/token', formData),  // must send username/password as form data
+};
+
+// --- USER PROFILE ---
+export const userAPI = {
+  getUserData: () => api.get('/get-user-data'),
+  getMyFavorites: () => api.get('/my_favorites'),
+  getMyOfferings: () => api.get('/my_offerings'),
+  updateUserInfo: (data) => api.put('/update_user_info', data),
+};
+
+// --- HOME PAGE & ITEMS ---
+export const itemAPI = {
+  getItems: () => api.get('/home/'),               // get all items
+  getItemById: (itemId) => api.get(`/home/item/${itemId}`),
+  getItemIdByTitle: (title) => api.get(`/home/title/${title}`),
+  createItem: (itemData) => api.post('/home/', itemData),
+  updateItem: (itemId, itemData) => api.put(`/home/${itemId}`, itemData),
+  deleteItem: (itemId) => api.delete(`/home/${itemId}`),
+};
+
+// --- FAVORITES ---
+export const favoritesAPI = {
+  getFavorites: () => api.get('/favorites'),
+  toggleFavorite: (itemId) => api.post(`/favorites/${itemId}`),
+  removeFavorite: (itemId) => api.delete(`/favorites/${itemId}`),
+};
+
+// --- BASKET ---
+export const basketAPI = {
+  getBasket: () => api.get('/basket'),
+  toggleBasketItem: (itemId) => api.post(`/basket/${itemId}`),
+  removeBasketItem: (itemId) => api.delete(`/basket/${itemId}`),
+};
+// Add an item to localStorage basket
+export const addToBasketLocal = (itemId) => {
+  let basket = JSON.parse(localStorage.getItem('basket')) || [];
+  if (!basket.includes(itemId)) {
+    basket.push(itemId);
+    localStorage.setItem('basket', JSON.stringify(basket));
+  }
+};
+
+
+
+
+// Get basket from localStorage
+export const getBasketLocal = () => {
+  return JSON.parse(localStorage.getItem('basket')) || [];
+};
+
+// Clear localStorage basket
+export const clearBasketLocal = () => {
+  localStorage.removeItem('basket');
+};

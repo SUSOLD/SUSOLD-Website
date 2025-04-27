@@ -55,5 +55,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     return {
         "id": str(user["_id"]), 
         "email": user["email"],
-        "user_id": user["user_id"]  # Make sure user_id is included in the returned dictionary
+        "user_id": user["user_id"],  # Make sure user_id is included in the returned dictionary
+        "credit_cards": user.get("credit_cards", []),   # ✅ Eklendi
+        "addresses": user.get("addresses", [])         # ✅ Eklendi
     }

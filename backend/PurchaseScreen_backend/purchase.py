@@ -24,22 +24,18 @@ class CreateOrderRequest(BaseModel):
 # API Endpoints
 @router.get("/cart-items", response_model=CartItemResponse)
 async def get_cart_items(current_user: dict = Depends(get_current_user)):
-
-    ## Get the current user's user_id
     user_id = current_user["user_id"]
-
-    ## Get the basket of the current_user
-    item_ids = current_user.get("basket", [])
+    user = await users_collection.find_one({"user_id": user_id}, {"basket": 1, "_id": 0})
+    item_ids = user.get("basket", [])
 
     if not item_ids:
-        return {"item_names": []}
+        return {"item_names": []}  # Changed from "title" to "item_names"
 
-    ## Return the corresponding names of the items
     items_cursor = item_collection.find({"item_id": {"$in": item_ids}})
     items = await items_cursor.to_list(length=None)
-    item_names = [item["item_name"] for item in items]
+    item_names = [item["title"] for item in items]
 
-    return {"item_names": item_names}
+    return {"item_names": item_names}  # Changed from "title" to "item_names"
 
 @router.get("/user-dropdown-data", response_model=UserDropdownData)
 async def get_user_dropdown_data(current_user: dict = Depends(get_current_user)):
@@ -56,7 +52,9 @@ async def complete_order(data: CreateOrderRequest, current_user: dict = Depends(
     user_id = current_user["user_id"]
 
     ## Get the basket of the current_user
-    item_ids = current_user.get("basket", [])
+    user = await users_collection.find_one({"user_id": user_id}, {"basket": 1, "_id": 0})
+    item_ids = user.get("basket", [])
+
 
     if not item_ids:
         raise HTTPException(status_code=400, detail="Cart is empty, cannot create order")
@@ -101,10 +99,10 @@ async def complete_order(data: CreateOrderRequest, current_user: dict = Depends(
     ## First, generate the list of item names
     item_cursor = item_collection.find(
         {"item_id": {"$in": item_ids}},
-        {"item_name": 1, "_id": 0}
+        {"title": 1, "_id": 0}
     )
     item_docs = await item_cursor.to_list(length=None)
-    item_names = [doc["item_name"] for doc in item_docs]
+    item_names = [doc["title"] for doc in item_docs]
     
     message = (
         "Thank you for your purchase!\n\n"
@@ -168,7 +166,7 @@ async def get_order_history(current_user: dict = Depends(get_current_user)):
     # Fetch item_name and isSold from item_collection
     items_cursor = item_collection.find(
         {"item_id": {"$in": all_item_ids}},
-        {"item_name": 1, "isSold": 1, "_id": 0}
+        {"title": 1, "isSold": 1, "_id": 0}
     )
     items = await items_cursor.to_list(length=None)
 

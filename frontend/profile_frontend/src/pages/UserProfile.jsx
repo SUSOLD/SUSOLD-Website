@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Edit, Package, MessageSquare, Check, X, Plus, LogOut, AlertTriangle, ThumbsUp } from 'lucide-react';
 import { getUserProfile, removeProduct, getProductById, getUnapprovedComments, approveComment, removeComment } from '../services/apiService';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import AuthService from '../services/AuthService'; 
 
 const UserProfile = () => {
@@ -297,7 +297,10 @@ const UserProfile = () => {
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white shadow-sm border-b">
         <div className="w-full max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-blue-600">SUSOLD<span className="text-gray-800"></span></h1>
+          {/* SUSOLD header is now a Link component that navigates to the homepage */}
+          <Link to="/" className="text-xl font-bold text-blue-600 hover:text-blue-800 transition">
+            SUSOLD<span className="text-gray-800"></span>
+          </Link>
           <button 
             onClick={handleLogout} 
             className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition"
