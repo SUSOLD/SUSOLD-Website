@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { addToBasketLocal } from '../services/apiService'; // ✅ Import local basket function
-import { basketAPI } from '../services/apiService';
+import { basketAPI, checkItemInStock } from '../services/apiService';
 
 
 const ProductDetail = () => {
@@ -46,21 +46,31 @@ const ProductDetail = () => {
     }
   };
 
+
   const handleAddToBasket = async (itemId) => {
     const token = localStorage.getItem('accessToken');
-    if (token) {
-      try {
-        await basketAPI.toggleBasketItem(itemId);
+    const inStock = await checkItemInStock(itemId);
+    if (!inStock) {
+      alert('Out of stock! Cannot add to basket.');
+      return; // ❌ Devam etme, basket'e ekleme
+    }
+    else{
+    
+      if (token) {
+        try {
+          await basketAPI.toggleBasketItem(itemId);
+          alert('Item added to basket!');
+        } catch (error) {
+          console.error('Error adding item to basket:', error);
+          alert('Failed to add item to basket. Please login again.');
+        }
+      } else {
+        addToBasketLocal(itemId);
         alert('Item added to basket!');
-      } catch (error) {
-        console.error('Error adding item to basket:', error);
-        alert('Failed to add item to basket. Please login again.');
       }
-    } else {
-      addToBasketLocal(itemId);
-      alert('Item added to basket!');
     }
   };
+  
   
   
 

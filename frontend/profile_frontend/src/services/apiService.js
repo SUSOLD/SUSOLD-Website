@@ -181,7 +181,12 @@ export const addToBasketLocal = (itemId) => {
 };
 
 
-
+export const checkItemInStock = async (itemId) => {
+  const res = await api.get('/get_in_stock', {
+    params: { item_id: itemId }
+  });
+  return res.data; // {"in_stock": true} gibi döner
+};
 
 // Get basket from localStorage
 export const getBasketLocal = () => {
