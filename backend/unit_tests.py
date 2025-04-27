@@ -318,3 +318,58 @@ async def test_remove_from_favorites():
 
 
 # ----------------------------------------- PURCHASE TESTS -----------------------------------------
+import pytest
+import pytest_asyncio
+from unittest.mock import AsyncMock, patch, MagicMock
+from backend.PurchaseScreen_backend.purchase import (
+    get_cart_items, get_user_dropdown_data, complete_order
+)
+from fastapi import HTTPException
+
+# Patch database collections globally
+@pytest_asyncio.fixture(autouse=True)
+def mock_db_collections():
+    with patch("backend.PurchaseScreen_backend.purchase.users_collection", new_callable=AsyncMock) as users_collection_mock, \
+         patch("backend.PurchaseScreen_backend.purchase.item_collection", new_callable=AsyncMock) as item_collection_mock, \
+         patch("backend.PurchaseScreen_backend.purchase.order_collection", new_callable=AsyncMock) as order_collection_mock:
+        yield users_collection_mock, item_collection_mock, order_collection_mock
+
+
+@pytest.mark.asyncio
+async def test_get_cart_items_empty_basket(mock_db_collections):
+    users_collection_mock, item_collection_mock, order_collection_mock = mock_db_collections
+    
+    current_user = {"user_id": "user123", "basket": []}
+
+    response = await get_cart_items(current_user)
+
+    assert response == {"item_names": []}
+
+
+@pytest.mark.asyncio
+async def test_get_user_dropdown_data(mock_db_collections):
+    current_user = {
+        "credit_cards": ["Card1", "Card2"],
+        "addresses": ["Address1", "Address2"]
+    }
+
+    response = await get_user_dropdown_data(current_user)
+
+    assert response == {
+        "credit_cards": ["Card1", "Card2"],
+        "addresses": ["Address1", "Address2"]
+    }
+
+
+@pytest.mark.asyncio
+async def test_complete_order_empty_basket(mock_db_collections):
+    users_collection_mock, item_collection_mock, order_collection_mock = mock_db_collections
+
+    current_user = {"user_id": "user123", "basket": []}
+    data = MagicMock(selected_address="Addr", selected_credit_card="Card")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await complete_order(data, current_user)
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Cart is empty, cannot create order"
