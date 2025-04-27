@@ -50,3 +50,18 @@ async def remove_from_basket(item_id: str, current_user: dict = Depends(get_curr
     )
 
     return {"message": "Item removed from basket"}
+
+@router.get("/get_in_stock")
+async def get_in_stock(item_id: str):
+    product = await item_collection.find_one({"item_id": item_id})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product.get("inStock", True)
+
+
+@router.get("/is_delivered")
+async def get_is_delivered(item_id: str):
+    product = await item_collection.find_one({"item_id": item_id})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product.get("isSold", True) == "delivered"
