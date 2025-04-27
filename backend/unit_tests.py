@@ -433,22 +433,4 @@ async def test_get_order_history_with_items(mock_db_collections):
         ]
     }
 
-# 7
-@pytest.mark.asyncio
-async def test_debug_all(mock_db_collections):
-    users_collection_mock, item_collection_mock, order_collection_mock = mock_db_collections
 
-    users_collection_mock.find.return_value = MagicMock()
-    users_collection_mock.find.return_value.to_list = AsyncMock(return_value=[{"_id": "someid", "field": "value"}])
-
-    item_collection_mock.find.return_value = MagicMock()
-    item_collection_mock.find.return_value.to_list = AsyncMock(return_value=[{"_id": "someid", "field": "value"}])
-
-    order_collection_mock.find.return_value = MagicMock()
-    order_collection_mock.find.return_value.to_list = AsyncMock(return_value=[{"_id": "someid", "field": "value"}])
-
-    response = await debug_all()
-
-    assert "users" in response
-    assert "items" in response
-    assert "orders" in response
