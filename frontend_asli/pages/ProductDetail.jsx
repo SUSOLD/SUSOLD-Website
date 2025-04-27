@@ -17,9 +17,10 @@ const ProductDetail = () => {
     setIsLoggedIn(!!token);
   }, [itemId]);
 
+  // Add to favorites
   const handleAddToFavorites = async () => {
     if (!isLoggedIn) {
-      alert('Please login to add favorites.');
+      alert('Please login to add to favorites.');
       navigate('/login');
       return;
     }
@@ -62,6 +63,9 @@ const ProductDetail = () => {
       <p><b>Condition:</b> {product.condition}</p>
       <p><b>Brand:</b> {product.brand}</p>
       <p><b>Category:</b> {product.category} / {product.sub_category}</p>
+      <p><b>Age:</b> {product.age} years</p>
+      <p><b>Returnable:</b> {product.returnable ? 'Yes' : 'No'}</p>
+      <p><b>Verified:</b> {product.verified ? 'Yes' : 'No'}</p>
 
       <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
         <button onClick={handleAddToFavorites} style={styles.buttonSecondary}>Add to Favorites</button>

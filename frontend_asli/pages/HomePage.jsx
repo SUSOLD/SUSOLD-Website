@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';  // Link'i import et
 import Navbar from '../components/Navbar';
 import CategoryMenu from '../components/CategoryMenu';
 import MainCarousel from '../components/MainCarousel';
@@ -37,6 +38,7 @@ const HomePage = ({
       />
       <MainCarousel />
       <TabMenu activeTab={activeTab} setActiveTab={setActiveTab} />
+      
       <ProductList
         items={filteredItems}
         searchTerm={searchTerm}

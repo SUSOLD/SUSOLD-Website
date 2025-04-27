@@ -1,7 +1,7 @@
 import React from 'react';
 
 const CategoryMenu = ({ activeCategory, setActiveCategory }) => {
-  const categories = ['All', 'Dormitory', 'Books', 'Clothing', 'Electronic'];
+  const categories = ['All', 'Dormitory', 'Books', 'Clothing', 'Home Appliances', 'Electronics'];
 
   return (
     <nav style={styles.menu}>

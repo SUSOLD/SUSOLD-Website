@@ -1,17 +1,28 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const ProductList = ({ items, searchTerm, activeTab, activeCategory, isLoggedIn }) => {
+const ProductList = ({
+  items,
+  searchTerm,
+  activeTab,
+  activeCategory,
+  isLoggedIn
+}) => {
   const navigate = useNavigate();
 
   const filtered = items.filter((item) => {
-    const matchesSearch = searchTerm ? item.title.toLowerCase().includes(searchTerm.toLowerCase()) : true;
+    const matchesSearch = searchTerm
+      ? item.title.toLowerCase().includes(searchTerm.toLowerCase())
+      : true;
+
+    // Tab filtering: Favorites, Verified Sellers or All
     const matchesTab =
       activeTab === 'Favorites'
-        ? item.isFavorite
+        ? item.isFavorite // Assuming `isFavorite` property exists
         : activeTab === 'Verified Sellers'
-        ? item.verified
+        ? item.verified // Assuming `verified` property exists
         : true;
+
     const matchesCategory =
       activeCategory === 'All' ? true : item.category === activeCategory;
 
@@ -26,7 +37,7 @@ const ProductList = ({ items, searchTerm, activeTab, activeCategory, isLoggedIn 
           <div
             key={item.item_id}
             style={styles.card}
-            onClick={() => navigate(`/item/${item.item_id}`)} // ✅ Clickable
+            onClick={() => navigate(`/product/${item.item_id}`)} // ✅ Clickable
           >
             <img
               src={item.image}

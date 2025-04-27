@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import HomePage from '../pages/HomePage.jsx';
-import ProductDetail from '../pages/ProductDetail.jsx'; // Detay sayfası için örnek
+import ProductDetail from '../pages/ProductDetail.jsx';
+import ProfilePage from '../pages/ProfilePage.jsx'; // ProfilePage'i doğru import edin
+import BasketPage from '../pages/BasketPage.jsx';
+import LoginPage from '../pages/LoginPage.jsx';
 
 function App() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -26,9 +29,22 @@ function App() {
             />
           }
         />
-        <Route
-          path="/product/:itemId"
-          element={<ProductDetail />}
+        {/* Profile page route */}
+        <Route 
+          path="/profile" 
+          element={<ProfilePage />} 
+        />
+        <Route 
+          path="/product/:itemId" 
+          element={<ProductDetail />} 
+        />
+        <Route 
+          path="/basket" 
+          element={<BasketPage />} 
+        />
+        <Route 
+          path="/login" 
+          element={<LoginPage />} 
         />
       </Routes>
     </Router>
