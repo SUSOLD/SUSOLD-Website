@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from motor.motor_asyncio import AsyncIOMotorClient
 import random
 
-from backend.database import users_collection, order_collection, cart_collection, item_collection
+from backend.database import users_collection, order_collection, item_collection
 from backend.registerloginbackend.jwt_handler import get_current_user
 
 router = APIRouter()
@@ -28,10 +28,8 @@ async def get_cart_items(current_user: dict = Depends(get_current_user)):
     ## Get the current user's user_id
     user_id = current_user["user_id"]
 
-    ## Find the rows in cart_collection with this user_id
-    cart_cursor = cart_collection.find({"user_id": user_id})
-    cart_items = await cart_cursor.to_list(length=None)
-    item_ids = [item["item_id"] for item in cart_items]
+    ## Get the basket of the current_user
+    item_ids = current_user.get("basket", [])
 
     if not item_ids:
         return {"item_names": []}
@@ -57,10 +55,8 @@ async def complete_order(data: CreateOrderRequest, current_user: dict = Depends(
     ## Get the current user's user_id
     user_id = current_user["user_id"]
 
-    ## Find the rows in cart_collection with this user_id (i.e. the items in the user's cart)
-    cart_cursor = cart_collection.find({"user_id": user_id})
-    cart_items = await cart_cursor.to_list(length=None)
-    item_ids = [item["item_id"] for item in cart_items]
+    ## Get the basket of the current_user
+    item_ids = current_user.get("basket", [])
 
     if not item_ids:
         raise HTTPException(status_code=400, detail="Cart is empty, cannot create order")
@@ -95,7 +91,10 @@ async def complete_order(data: CreateOrderRequest, current_user: dict = Depends(
         )
 
     ## Empty the cart
-    await cart_collection.delete_many({"user_id": user_id})
+    await users_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"basket": []}}
+    )
 
     ## Now we will generate the invoice
 
@@ -146,7 +145,9 @@ async def complete_order(data: CreateOrderRequest, current_user: dict = Depends(
 
     return {"message": message}
 
-
+def clean_document(doc):
+    doc["_id"] = str(doc["_id"])  # Convert ObjectId to string
+    return doc
 
 @router.get("/order-history")
 async def get_order_history(current_user: dict = Depends(get_current_user)):
@@ -174,27 +175,20 @@ async def get_order_history(current_user: dict = Depends(get_current_user)):
     return {"order_items": items}
 
 
-def clean_document(doc):
-    doc["_id"] = str(doc["_id"])  # Convert ObjectId to string
-    return doc
-
 @router.get("/debug-all")
 async def debug_all():
     users = await users_collection.find().to_list(length=None)
     items = await item_collection.find().to_list(length=None)
-    cart = await cart_collection.find().to_list(length=None)
     orders = await order_collection.find().to_list(length=None)
 
     # Clean _id fields
     users = [clean_document(doc) for doc in users]
     items = [clean_document(doc) for doc in items]
-    cart = [clean_document(doc) for doc in cart]
     orders = [clean_document(doc) for doc in orders]
 
     return {
         "users": users,
         "items": items,
-        "cart": cart,
         "orders": orders
     }
 
