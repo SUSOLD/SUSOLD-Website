@@ -89,6 +89,32 @@ async def get_my_feedbacks(current_user: dict = Depends(get_current_user)):
 
 
 # -------------------------------
+# Show feedbacks for current user
+# -------------------------------
+@main_router.get("/seller_feedbacks")
+async def get_seller_feedbacks(seller_id: str): 
+    seller = await users_collection.find_one({"user_id": seller_id})
+
+    feedbacks = feedback_collection.find({"receiver": seller["user_id"]})
+    feedback_list = []
+    async for fb in feedbacks:
+        fb["_id"] = str(fb["_id"])
+        
+        # Handle comment display
+        if fb.get("comment") and not fb.get("isCommentVerified", False):
+            fb["comment"] = "no comment"
+        if fb.get("comment") == None:
+            fb["comment"] = "no comment"
+        feedback_list.append({
+            "rating": fb.get("rating"),
+            "comment": fb.get("comment"),
+            "_id": fb["_id"],
+        })
+
+    return {"feedbacks_received": feedback_list}
+
+
+# -------------------------------
 # Show unapproved comments (PRODUCT MANAGEERRRRR)
 # -------------------------------
 @main_router.get("/unapproved_comments")
@@ -107,6 +133,35 @@ async def get_unapproved_comments(current_user: dict = Depends(get_current_user)
         fb["_id"] = str(fb["_id"])
 
     return {"unapproved_comments": feedbacks}
+
+
+# -------------------------------
+# Mark a product as delivered (PRODUCT MANAGERRR)
+# -------------------------------
+@main_router.put("/mark_as_delivered/{item_id}")
+async def mark_product_as_delivered(item_id: str, current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not user.get("isManager", False):
+        raise HTTPException(status_code=403, detail="Not authorized to mark products as delivered.")
+
+    # Find the product by item_id
+    product = await item_collection.find_one({"item_id": item_id})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found.")
+
+    # Update the isSold status to "delivered"
+    await item_collection.update_one(
+        {"item_id": item_id},
+        {"$set": {"isSold": "delivered"}}
+    )
+
+    return {"message": "Product marked as delivered successfully."}
+
+
+
 
 
 # -------------------------------
@@ -163,20 +218,6 @@ async def remove_comment(feedback_id: str, current_user: dict = Depends(get_curr
         raise HTTPException(status_code=404, detail="Comment not found or already removed.")
 
     return {"message": "Comment removed successfully."}
-
-
-# -------------------------------
-# Display isManager value of the user
-# -------------------------------
-@main_router.get("/is_manager")
-async def is_user_manager(current_user: dict = Depends(get_current_user)):
-    user = await users_collection.find_one({"user_id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    is_manager = user.get("isManager", False)
-    return {"is_manager": is_manager}
-
 
 
 # -------------------------------
@@ -270,7 +311,7 @@ async def add_to_offerings(product: Product, current_user: dict = Depends(get_cu
 
     if "offeredProducts" not in user:
         user["offeredProducts"] = []
-
+ 
     user["offeredProducts"].append(new_product)
     await users_collection.update_one(
         {"user_id": current_user["user_id"]},
@@ -315,7 +356,7 @@ async def get_my_favorites(current_user: dict = Depends(get_current_user)):
     for item_id in favorite_ids:
         product = await item_collection.find_one({"item_id": item_id})
         if product:
-            # 🔥 Convert _id to string for JSON
+            
             if "_id" in product and isinstance(product["_id"], ObjectId):
                 product["_id"] = str(product["_id"])
             favorite_products.append(product)
@@ -328,7 +369,7 @@ async def get_my_favorites(current_user: dict = Depends(get_current_user)):
 # -------------------------------
 @main_router.post("/add_to_favorites")
 async def add_to_favorites(product_id: str, current_user: dict = Depends(get_current_user)):
-    product = await item_collection.find_one({"item_id": product_id})  # 🔥 SEARCH BY item_id
+    product = await item_collection.find_one({"item_id": product_id})
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
@@ -342,7 +383,7 @@ async def add_to_favorites(product_id: str, current_user: dict = Depends(get_cur
     if product_id in user["favorites"]:
         raise HTTPException(status_code=400, detail="Product already in favorites")
 
-    user["favorites"].append(product_id)  # 🔥 only save item_id
+    user["favorites"].append(product_id)
     await users_collection.update_one(
         {"user_id": current_user["user_id"]},
         {"$set": {"favorites": user["favorites"]}}
