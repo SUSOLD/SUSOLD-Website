@@ -1,7 +1,7 @@
 import React from 'react';
 
-const CategoryMenu = ({ activeCategory, setActiveCategory }) => {
-  const categories = ['All', 'Books', 'Clothing','Electronics',  'Furniture','Sports', 'Others' ];
+const CategoryMenu = ({ activeCategory, setActiveCategory, openSortFilter }) => {
+  const categories = ['All', 'Books', 'Clothing', 'Electronics', 'Furniture', 'Sports', 'Others'];
 
   return (
     <nav style={styles.menu}>
@@ -21,6 +21,9 @@ const CategoryMenu = ({ activeCategory, setActiveCategory }) => {
           {category}
         </span>
       ))}
+      <button onClick={openSortFilter} style={styles.sortButton}>
+        Sort & Filter
+      </button>
     </nav>
   );
 };
@@ -34,6 +37,14 @@ const styles = {
   },
   item: {
     fontWeight: 'bold'
+  },
+  sortButton: {
+    backgroundColor: '#f0f0f0',
+    color: 'black',
+    padding: '4px 10px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    border: '1px solid black'
   }
 };
 
