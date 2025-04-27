@@ -5,6 +5,7 @@ import MainCarousel from '../components/Homepage/MainCarousel';
 import TabMenu from '../components/Homepage/TabMenu';
 import ProductList from '../components/Homepage/ProductList';
 
+
 const HomePage = ({
   searchTerm,
   setSearchTerm,
@@ -22,23 +23,41 @@ const HomePage = ({
   const [descriptionFilter, setDescriptionFilter] = useState('');
   const [showSortFilter, setShowSortFilter] = useState(false);
 
+const conditionPriority = {
+    "New": 4,
+    "Like New": 3,
+    "Very Good": 2,
+    "Excellent": 5,
+    "Poor": 1
+    };
+
   const fetchItems = () => {
     let url = 'http://127.0.0.1:8000/api/home/?';
 
-    if (sortBy) url += `sort_by=${sortBy}&`;
+    if (sortBy && sortBy !== "popularity") url += `sort_by=${sortBy}&`;
     if (minPrice) url += `min_price=${minPrice}&`;
     if (maxPrice) url += `max_price=${maxPrice}&`;
     if (descriptionFilter) url += `description=${descriptionFilter}&`;
 
     fetch(url)
       .then(response => response.json())
-      .then(data => setItems(data.featured_products || []))
+      .then(data => {
+       let fetchedItems = data.featured_products || [];
+
+       if (sortBy === "popularity") {
+         fetchedItems.sort((a, b) => 
+           (conditionPriority[b.condition] || 0) - (conditionPriority[a.condition] || 0)
+         );
+       }
+
+        setItems(fetchedItems);
+      })
       .catch(error => console.error('Error fetching products:', error));
   };
 
   useEffect(() => {
     fetchItems();
-  }, []);
+  }, [sortBy]); // 👉 Important: Watch sortBy change to refetch/sort properly
 
   useEffect(() => {
     const fetchFavorites = async () => {
@@ -106,7 +125,7 @@ const HomePage = ({
             <option value="">Sort By</option>
             <option value="price_asc">Price Low to High</option>
             <option value="price_desc">Price High to Low</option>
-            <option value="popularity">Popularity</option>
+            <option value="popularity">Condition Quality (Best First)</option> 
             <option value="newest">Newest</option>
           </select>
 
@@ -142,16 +161,26 @@ const HomePage = ({
           </div>
         </div>
       )}
-
     </div>
   );
 };
 
+
+
 const styles = {
-  modal: {
+  modalOverlay: {
     position: 'fixed',
-    top: '20%',
-    left: '30%',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 999,
+  },
+  modal: {
+    position: 'fixed',    
+    top: '20%',          
+    left: '30%',          
     backgroundColor: 'white',
     padding: '20px',
     border: '2px solid black',
@@ -161,22 +190,45 @@ const styles = {
   input: {
     width: '100%',
     padding: '10px',
-    marginBottom: '10px',
+    marginBottom: '12px',
     borderRadius: '8px',
     border: '1px solid black',
-    color: 'black',             
-    backgroundColor: 'white',   
+    color: 'black',
+    backgroundColor: 'white',
   },
-  button: {
-    margin: '5px',
-    backgroundColor: 'black',
-    color: 'white',
-    padding: '8px 15px',
-    borderRadius: '8px',
-    cursor: 'pointer',
+  closeButton: {
+    position: 'absolute',
+    top: '10px',
+    right: '15px',
+    backgroundColor: 'transparent',
     border: 'none',
+    fontSize: '18px',
+    cursor: 'pointer',
+    fontWeight: 'bold',
+  },
+  buttonContainer: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginTop: '10px',
+  },
+  buttonPrimary: {
+    backgroundColor: '#28a745',
+    color: 'white',
+    padding: '10px 20px',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer'
+  },
+  buttonSecondary: {
+    backgroundColor: '#dc3545',
+    color: 'white',
+    padding: '10px 20px',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer'
   }
 };
+
 
 
 export default HomePage;
