@@ -26,7 +26,7 @@ const ProductList = ({ items, searchTerm, activeTab, activeCategory, isLoggedIn 
           <div
             key={item.item_id}
             style={styles.card}
-            onClick={() => navigate(`/item/${item.item_id}`)} // ✅ Clickable
+            onClick={() => navigate(`/item/${item.item_id}`)} 
           >
             <img
               src={item.image}
@@ -35,6 +35,12 @@ const ProductList = ({ items, searchTerm, activeTab, activeCategory, isLoggedIn 
             />
             <p><b>{item.title}</b></p>
             <p>{item.condition} 👍</p>
+
+            {/* stock status gösterimi */}
+            <p style={{ color: item.inStock ? 'green' : 'red', fontWeight: 'bold' }}>
+              {item.inStock ? 'In Stock' : 'Out of Stock'}
+            </p>
+
             <p>{item.price} TL</p>
           </div>
         ))}

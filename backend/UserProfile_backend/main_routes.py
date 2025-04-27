@@ -69,7 +69,7 @@ async def get_my_feedbacks(current_user: dict = Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    feedbacks = feedback_collection.find({"receiver": current_user["user_id"]})
+    feedbacks = feedback_collection.find({"receiver_id": current_user["user_id"]})
     feedback_list = []
     async for fb in feedbacks:
         fb["_id"] = str(fb["_id"])
@@ -95,7 +95,7 @@ async def get_my_feedbacks(current_user: dict = Depends(get_current_user)):
 async def get_seller_feedbacks(seller_id: str): 
     seller = await users_collection.find_one({"user_id": seller_id})
 
-    feedbacks = feedback_collection.find({"receiver": seller["user_id"]})
+    feedbacks = feedback_collection.find({"receiver_id": seller["user_id"]})
     feedback_list = []
     async for fb in feedbacks:
         fb["_id"] = str(fb["_id"])
@@ -211,7 +211,7 @@ async def remove_comment(feedback_id: str, current_user: dict = Depends(get_curr
 
     result = await feedback_collection.update_one(
         {"_id": feedback_obj_id, "comment": {"$ne": None}},
-        {"$unset": {"comment": ""}, "$set": {"isCommentVerified": False}}
+        {"$set": {"comment": None, "isCommentVerified": False}}
     )
 
     if result.matched_count == 0:

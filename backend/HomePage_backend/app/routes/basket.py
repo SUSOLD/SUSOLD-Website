@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from bson import ObjectId
-from backend.database import users_collection, item_collection
+from backend.database import users_collection, item_collection, order_collection
 from backend.registerloginbackend.jwt_handler import get_current_user
 
 router = APIRouter()
@@ -59,9 +59,27 @@ async def get_in_stock(item_id: str):
     return product.get("inStock", True)
 
 
+
 @router.get("/is_delivered")
-async def get_is_delivered(item_id: str):
+async def get_is_delivered(item_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = current_user["user_id"]
+    user = await users_collection.find_one({"user_id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    # Step 1: Check if the user has bought the item
+    order = await order_collection.find_one({
+        "user_id": user_id,
+        "item_ids": {"$in": [item_id]}
+    })
+
+    if not order:
+        return False
+
+    # Step 2: Check if the product is marked as "delivered"
     product = await item_collection.find_one({"item_id": item_id})
+
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-    return product.get("isSold", True) == "delivered"
+        raise HTTPException(status_code=404, detail="Product not found.")
+   
+    return product.get("isSold") == "delivered"
+
