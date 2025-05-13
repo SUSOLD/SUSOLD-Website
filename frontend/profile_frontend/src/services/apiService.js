@@ -183,6 +183,23 @@ export const getPurchasedProducts = async () => {
   }
 };
 
+// Tüm siparişleri getir (Product Manager için)
+export const getAllOrders = async () => {
+  const res = await api.get('/all-orders'); // Bu endpoint'i backend'de oluşturmanız gerekebilir
+  return res.data || [];
+};
+
+// Ürün durumunu güncelle
+export const updateProductStatus = async (itemId, status) => {
+  try {
+    const res = await api.put(`/mark_status/${itemId}?status=${status}`);
+    return res.data;
+  } catch (error) {
+    console.error('Error updating product status:', error);
+    throw error;
+  }
+};
+
 // Bir ürünün işlemde olup olmadığını kontrol et
 export const isItemProcessing = async (itemId) => {
   try {

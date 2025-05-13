@@ -14,7 +14,9 @@ import {
   getRefundRequests,
   handleRefundRequest,
   getItemsWithoutPrice,
-  setProductPrice 
+  setProductPrice,
+  getAllOrders,
+  updateProductStatus
 } from '../services/apiService';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthService from '../services/AuthService';
@@ -47,6 +49,8 @@ const UserProfile = () => {
   const [itemsWithoutPrice, setItemsWithoutPrice] = useState([]);
   const [newPrice, setNewPrice] = useState({});
   const [priceLoading, setPriceLoading] = useState(false);
+  const [allOrders, setAllOrders] = useState([]);
+  const [orderLoading, setOrderLoading] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -144,6 +148,41 @@ const UserProfile = () => {
       console.error('Error removing comment:', error);
     } finally {
       setApprovalLoading(false);
+    }
+  };
+  // Product Manager için tüm siparişleri yükle
+  const fetchAllOrders = async () => {
+    try {
+      setOrderLoading(true);
+      const orders = await getAllOrders();
+      setAllOrders(orders);
+    } catch (error) {
+      console.error('Error fetching all orders:', error);
+    } finally {
+      setOrderLoading(false);
+    }
+  };
+  // Ürün durumunu güncelle
+  const handleStatusUpdate = async (itemId, newStatus) => {
+    try {
+      await updateProductStatus(itemId, newStatus);
+      
+      // Yerel state'i güncelle
+      setAllOrders(prevOrders => 
+        prevOrders.map(order => ({
+          ...order,
+          items: order.items.map(item => 
+            item.item_id === itemId 
+              ? { ...item, status: newStatus } 
+              : item
+          )
+        }))
+      );
+      
+      alert(`Product status updated to "${newStatus}" successfully.`);
+    } catch (error) {
+      console.error('Error updating product status:', error);
+      alert('Failed to update status: ' + error.response?.data?.detail || error.message);
     }
   };
 
@@ -507,7 +546,7 @@ const handleSetPrice = async (itemId) => {
                         {order.status === 'delivered' && !order.refundRequested && (
                           <button
                             onClick={() => handleRefundRequest(orderId, order.items.map(item => item.item_id))}
-                            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                           >
                             <RefreshCw size={16} className="mr-1" />
                             Request Refund
@@ -594,6 +633,103 @@ const handleSetPrice = async (itemId) => {
               )}
             </div>
           );
+          case 'manageOrders':
+            return (
+              <div className="grid grid-cols-1 gap-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-semibold text-gray-800">Manage Orders</h2>
+                </div>
+                
+                {orderLoading ? (
+                  <div className="text-center py-10">
+                    <RefreshCw size={40} className="text-blue-500 mx-auto mb-3 animate-spin" />
+                    <p className="text-gray-500">Loading orders...</p>
+                  </div>
+                ) : allOrders.length > 0 ? (
+                  allOrders.map((order) => (
+                    <div key={order.order_id} className="bg-white rounded-lg shadow-md overflow-hidden">
+                      <div className="border-b border-gray-200 bg-gray-50 px-6 py-4">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                          <div>
+                            <h3 className="text-lg font-medium text-gray-900">Order #{order.order_id.substring(0, 8)}</h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                              User ID: {order.user_id}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Placed on {new Date(order.date).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="px-6 py-4">
+                        <ul className="divide-y divide-gray-200">
+                          {order.items.map((item) => (
+                            <li key={item.item_id} className="py-4 flex flex-col md:flex-row md:items-center">
+                              <div className="flex-1 flex">
+                                <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
+                                  {item.image ? (
+                                    <img src={item.image} alt={item.title} className="h-full w-full object-cover object-center" />
+                                  ) : (
+                                    <div className="flex items-center justify-center h-full w-full bg-gray-100 text-gray-400">
+                                      <Package size={24} />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="ml-4 flex flex-1 flex-col">
+                                  <div>
+                                    <div className="flex justify-between text-base font-medium text-gray-900">
+                                      <h3>{item.title}</h3>
+                                      <p className="ml-4">{item.price} ₺</p>
+                                    </div>
+                                    <p className="mt-1 text-sm text-gray-500">ID: {item.item_id}</p>
+                                    <p className="mt-1 text-sm text-gray-500">Category: {item.category}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="mt-4 md:mt-0 md:ml-6 flex items-center space-x-2">
+                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                                  ${item.status === 'processing' ? 'bg-blue-100 text-blue-800' : 
+                                    item.status === 'inTransit' ? 'bg-yellow-100 text-yellow-800' : 
+                                    item.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                                    'bg-gray-100 text-gray-800'}`}
+                                >
+                                  {item.status === 'processing' ? <RefreshCw size={14} className="mr-1" /> : 
+                                    item.status === 'inTransit' ? <Truck size={14} className="mr-1" /> : 
+                                    item.status === 'delivered' ? <Check size={14} className="mr-1" /> :
+                                    <Package size={14} className="mr-1" />}
+                                  {item.status === 'processing' ? 'Processing' : 
+                                    item.status === 'inTransit' ? 'In Transit' : 
+                                    item.status === 'delivered' ? 'Delivered' :
+                                    item.status === 'stillInStock' ? 'In Stock' : 'Unknown'}
+                                </span>
+                                
+                                <select 
+                                  defaultValue={item.status || 'processing'}
+                                  onChange={(e) => handleStatusUpdate(item.item_id, e.target.value)}
+                                  className="border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                >
+                                  <option value="processing">Processing</option>
+                                  <option value="stillInStock">In Stock</option>
+                                  <option value="inTransit">In Transit</option>
+                                  <option value="delivered">Delivered</option>
+                                </select>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-8 bg-white rounded-lg shadow-sm">
+                    <Package size={40} className="text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-500">No orders found.</p>
+                  </div>
+                )}
+              </div>
+            );
           
           case 'setPrices':
             return (
@@ -835,15 +971,18 @@ const handleSetPrice = async (itemId) => {
             {/* Yönetici ise "Unapproved Comments" sekmesini göster */}
             {userData.isManager && (
               <button
-                onClick={() => setActiveTab('unapprovedComments')}
+                onClick={() => {
+                  setActiveTab('manageOrders');
+                  fetchAllOrders(); // Sekmeye geçince siparişleri yükle
+                }}
                 className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
-                  activeTab === 'unapprovedComments'
+                  activeTab === 'manageOrders'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <AlertTriangle size={18} className="mr-2" />
-                Unapproved Comments
+                <Package size={18} className="mr-2" />
+                Manage Orders
               </button>
             )}
 

@@ -562,6 +562,48 @@ async def get_user_orders(current_user: dict = Depends(get_current_user)):
 
     return result
 
+@main_router.get("/all-orders")
+async def get_all_orders(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Sadece product manager'lar tüm siparişleri görebilir
+    if not user.get("isManager", False):
+        raise HTTPException(status_code=403, detail="Only product managers can view all orders")
+    
+    # Tüm siparişleri getir
+    orders_cursor = order_collection.find({})
+    orders = await orders_cursor.to_list(length=1000)
+    
+    result = []
+    for order in orders:
+        # Siparişin temel bilgilerini al
+        order_data = {
+            "order_id": order.get("order_id"),
+            "user_id": order.get("user_id"),
+            "date": order.get("date"),
+            "items": []
+        }
+        
+        # Her siparişteki ürünleri getir
+        for item_id in order.get("item_ids", []):
+            item = await item_collection.find_one({"item_id": item_id})
+            if item:
+                order_data["items"].append({
+                    "item_id": item.get("item_id"),
+                    "title": item.get("title"),
+                    "image": item.get("image", [None])[0],  # İlk resmi al veya None
+                    "price": item.get("price"),
+                    "category": item.get("category"),
+                    "status": item.get("isSold", "processing"),
+                    "inStock": item.get("inStock", False)
+                })
+        
+        result.append(order_data)
+    
+    return result
+
 
 # -------------------------------
 # Cancel an order if the status is 'processing'
