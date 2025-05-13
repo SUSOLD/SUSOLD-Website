@@ -186,38 +186,36 @@ const UserProfile = () => {
     ));
   };
   // Satın alınan ürünleri getir
-// Satın alınan ürünleri getir
-const fetchPurchasedProducts = async () => {
-  try {
-    setPurchasedItemsLoading(true);
-    const orders = await getPurchasedProducts();
-    
-    // API'den gelen verileri doğrudan orderDetails state'ine aktarıyoruz
-    const orderMap = {};
-    
-    orders.forEach(order => {
-      let totalPrice = 0;
+  const fetchPurchasedProducts = async () => {
+    try {
+      setPurchasedItemsLoading(true);
+      const orders = await getPurchasedProducts();
       
-      // Siparişteki tüm ürünlerin toplam fiyatını hesapla
-      order.items.forEach(item => {
-        totalPrice += item.price || 0;
+      const orderMap = {};
+      
+      orders.forEach(order => {
+        let totalPrice = 0;
+        
+        // Siparişteki tüm ürünlerin toplam fiyatını hesapla
+        order.items.forEach(item => {
+          totalPrice += item.price || 0;
+        });
+        
+        orderMap[order.order_id] = {
+          items: order.items,
+          date: order.purchase_date,
+          status: order.status,
+          total_price: totalPrice
+        };
       });
       
-      orderMap[order.order_id] = {
-        items: order.items, 
-        date: order.purchase_date,
-        status: order.status,
-        total_price: totalPrice
-      };
-    });
-    
-    setOrderDetails(orderMap);
-  } catch (error) {
-    console.error('Error fetching purchased products:', error);
-  } finally {
-    setPurchasedItemsLoading(false);
-  }
-};
+      setOrderDetails(orderMap);
+    } catch (error) {
+      console.error('Error fetching purchased products:', error);
+    } finally {
+      setPurchasedItemsLoading(false);
+    }
+  };
 
 // Sipariş iptali
 const handleCancelOrder = async (orderId) => {

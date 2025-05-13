@@ -521,6 +521,33 @@ async def get_purchased_products(current_user: dict = Depends(get_current_user))
 
     return purchased_items
 
+@main_router.get("/user-orders")
+async def get_user_orders(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    orders_cursor = order_collection.find({"user_id": user["user_id"]})
+    orders = await orders_cursor.to_list(length=100)
+
+    if not orders:
+        return []
+
+    result = []
+    for order in orders:
+        order_id = order.get("order_id")
+        order_date = order.get("date")
+        item_ids = order.get("item_ids", [])
+        
+        # Ürün ID'lerini ve ek sipariş bilgilerini birlikte döndür
+        result.append({
+            "order_id": order_id,
+            "date": order_date,
+            "item_ids": item_ids
+        })
+
+    return result
+
 
 # -------------------------------
 # Cancel an order if the status is 'processing'
