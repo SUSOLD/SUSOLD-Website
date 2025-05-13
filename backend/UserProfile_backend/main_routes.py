@@ -753,16 +753,29 @@ async def get_items_without_price(current_user: dict = Depends(get_current_user)
     user = await users_collection.find_one({"user_id": current_user["user_id"]})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
+    
+    # Sadece Sales Manager'lar fiyatsız ürünleri görebilir
     if not user.get("isSalesManager", False):
-        raise HTTPException(status_code=403, detail="Only sales managers can access items without a price.")
-
-    items_cursor = item_collection.find({"price": 0})
-    items = await items_cursor.to_list(length=None)
-
-    item_ids = [item["item_id"] for item in items if "item_id" in item]
-
-    return {"items_with_no_price": item_ids}
-
+        raise HTTPException(status_code=403, detail="Only sales managers can view products without prices")
+    
+    # Fiyatı olmayan veya fiyatı 0 olan ürünleri bul
+    query = {"$or": [{"price": {"$exists": False}}, {"price": None}, {"price": 0}]}
+    items_cursor = item_collection.find(query)
+    items = await items_cursor.to_list(length=1000)
+    
+    # Daha fazla bilgi içeren bir response oluştur
+    items_with_detail = []
+    for item in items:
+        items_with_detail.append({
+            "item_id": item.get("item_id"),
+            "title": item.get("title"),
+            "description": item.get("description"),
+            "category": item.get("category"),
+            "condition": item.get("condition"),
+            "image": item.get("image", [None])[0],  # İlk resmi al veya None
+            "inStock": item.get("inStock", True)
+        })
+    
+    return {"items_with_no_price": items_with_detail}
 
 

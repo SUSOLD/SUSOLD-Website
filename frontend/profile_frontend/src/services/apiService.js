@@ -223,7 +223,7 @@ export const handleRefundRequest = async (orderId, action) => {
 // Fiyatı olmayan ürünleri getir
 export const getItemsWithoutPrice = async () => {
   const res = await api.get('/items-without-price');
-  return res.data;
+  return res.data || { items_with_no_price: [] };
 };
 
 // Ürün fiyatını ayarla

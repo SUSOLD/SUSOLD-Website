@@ -291,6 +291,7 @@ const processRefundRequest = async (orderId, action) => {
 };
 
 // Fiyatı olmayan ürünleri getir (Sales Manager için)
+// Fiyatı olmayan ürünleri getir (Sales Manager için)
 const fetchItemsWithoutPrice = async () => {
   try {
     setPriceLoading(true);
@@ -594,55 +595,78 @@ const handleSetPrice = async (itemId) => {
             </div>
           );
           
-        case 'setPrices':
-          return (
-            <div className="grid grid-cols-1 gap-4">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-800">Set Product Prices</h2>
-              </div>
-              
-              {priceLoading ? (
-                <div className="text-center py-10">
-                  <RefreshCw size={40} className="text-blue-500 mx-auto mb-3 animate-spin" />
-                  <p className="text-gray-500">Loading products...</p>
+          case 'setPrices':
+            return (
+              <div className="grid grid-cols-1 gap-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-semibold text-gray-800">Set Product Prices</h2>
                 </div>
-              ) : itemsWithoutPrice.length > 0 ? (
-                itemsWithoutPrice.map((itemId) => (
-                  <div key={itemId} className="bg-white rounded-lg shadow-md p-4">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                      <div className="mb-2 md:mb-0">
-                        <h3 className="font-medium text-gray-900">Product ID: {itemId}</h3>
-                      </div>
-                      <div className="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-2">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="Enter price"
-                          value={newPrice[itemId] || ''}
-                          onChange={(e) => setNewPrice({...newPrice, [itemId]: e.target.value})}
-                          className="border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        />
-                        <button
-                          onClick={() => handleSetPrice(itemId)}
-                          disabled={priceLoading}
-                          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        >
-                          <Check size={16} className="mr-1" />
-                          Set Price
-                        </button>
+                
+                {priceLoading ? (
+                  <div className="text-center py-10">
+                    <RefreshCw size={40} className="text-blue-500 mx-auto mb-3 animate-spin" />
+                    <p className="text-gray-500">Loading products...</p>
+                  </div>
+                ) : itemsWithoutPrice.length > 0 ? (
+                  itemsWithoutPrice.map((item) => (
+                    <div key={item.item_id} className="bg-white rounded-lg shadow-md p-4">
+                      <div className="flex flex-col md:flex-row">
+                        {/* Ürün resmi */}
+                        <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 mr-4">
+                          {item.image ? (
+                            <img src={item.image} alt={item.title} className="h-full w-full object-cover object-center" />
+                          ) : (
+                            <div className="flex items-center justify-center h-full w-full bg-gray-100 text-gray-400">
+                              <Package size={24} />
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Ürün bilgileri */}
+                        <div className="flex-1">
+                          <div className="mb-2">
+                            <h3 className="font-medium text-gray-900">{item.title || 'Ürün Adı'}</h3>
+                            <p className="text-sm text-gray-500">ID: {item.item_id}</p>
+                            <p className="text-sm text-gray-600 mt-1">Category: {item.category || 'Belirtilmemiş'}</p>
+                            <p className="text-sm text-gray-600">Condition: {item.condition || 'Belirtilmemiş'}</p>
+                            <p className="text-sm text-gray-600">Description: {item.description ? (item.description.length > 100 ? item.description.substring(0, 100) + '...' : item.description) : 'Açıklama yok'}</p>
+                          </div>
+                        </div>
+                        
+                        {/* Fiyat giriş alanı */}
+                        <div className="flex flex-col md:items-end space-y-2 mt-3 md:mt-0">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="Enter price"
+                              value={newPrice[item.item_id] || ''}
+                              onChange={(e) => setNewPrice({...newPrice, [item.item_id]: e.target.value})}
+                              className="border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm w-32"
+                            />
+                            <span className="text-gray-700 font-medium">₺</span>
+                          </div>
+                          <button
+                            onClick={() => handleSetPrice(item.item_id)}
+                            disabled={priceLoading}
+                            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                          >
+                            <Check size={16} className="mr-1" />
+                            Set Price
+                          </button>
+                        </div>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-8 bg-white rounded-lg shadow-sm">
+                    <Package size={40} className="text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-500">No products without prices.</p>
                   </div>
-                ))
-              ) : (
-                <div className="col-span-full text-center py-8 bg-white rounded-lg shadow-sm">
-                  <Package size={40} className="text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-500">No products without prices.</p>
-                </div>
-              )}
-            </div>
-          );    
+                )}
+              </div>
+            );
       case 'unapprovedComments':
         return (
           <div className="grid grid-cols-1 gap-4">
