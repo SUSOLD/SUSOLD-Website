@@ -6,6 +6,18 @@ import random
 from backend.database import users_collection, order_collection, item_collection
 from backend.registerloginbackend.jwt_handler import get_current_user
 
+###
+from datetime import datetime, timezone, timedelta
+from bson import ObjectId
+
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
+from email.mime.text import MIMEText
+from io import BytesIO
+from reportlab.pdfgen import canvas
+###
+
 router = APIRouter()
 
 
@@ -20,6 +32,18 @@ class UserDropdownData(BaseModel):
 class CreateOrderRequest(BaseModel):
     selected_address: str
     selected_credit_card: str
+
+###
+class Order(BaseModel):
+    order_id: str
+    item_ids: list[str]
+    shipping_address: str
+    payment_info: str
+    user_id: str
+    date: datetime
+    total_price: int
+    number_of_items: int 
+###
 
 # API Endpoints
 @router.get("/cart-items", response_model=CartItemResponse)
@@ -60,24 +84,49 @@ async def complete_order(data: CreateOrderRequest, current_user: dict = Depends(
         raise HTTPException(status_code=400, detail="Cart is empty, cannot create order")
     
 
-    ## Generate a row for order_collection
+    ## Now we will generate a row for order_collection
+
+    ## Create a list of all order_id values (to make sure that the newly generated order_id isn't a duplicate)
     order_cursor = order_collection.find({}, {'order_id': 1, '_id': 0})
     order_docs = await order_cursor.to_list(length=None)
     order_ids = [doc['order_id'] for doc in order_docs]
 
-
+    ## Generate a new order_id until one that hasn't already been used is found
     while True:
         order_id_number = random.randint(0, 99999)
         order_id = f"order{order_id_number:05d}"
         if order_id not in order_ids:
             break
 
+    ###
+    ## Now, let us create a date object
+    utc_plus_3 = timezone(timedelta(hours=3))
+    now = datetime.now(utc_plus_3)
+
+    ## Let us calculate the total price
+    pipeline = [
+        {"$match": {"item_id": {"$in": item_ids}}},
+        {"$group": {"_id": None, "total_price": {"$sum": "$price"}}}
+    ]
+    result = await item_collection.aggregate(pipeline).to_list(length=1)
+    total_price = result[0]["total_price"] if result else 0
+
+    ## ..and the total number of items
+    number_of_items = len(item_ids)
+    ###
+
+
     new_order = {
         "order_id": order_id,
         "item_ids": item_ids,
         "shipping_address": data.selected_address,
         "payment_info": data.selected_credit_card,
-        "user_id": user_id
+        "user_id": user_id,
+        ###
+        "date": now,
+        "total_price": total_price,
+        "number_of_items": number_of_items
+        ###
     }
     await order_collection.insert_one(new_order)
 
@@ -110,36 +159,58 @@ async def complete_order(data: CreateOrderRequest, current_user: dict = Depends(
         f"Order ID: {order_id}\n\n"
         f"Purchased Items: {', '.join(item_names)}\n\n"
         f"Payment Info: {data.selected_credit_card}\n\n"
-        f"Shipping Address: {data.selected_address}"
+        f"Shipping Address: {data.selected_address}\n\n"
+        ###
+        f"Date: {now}\n\n"
+        f"Total Price: {total_price}\n\n"
+        f"Number of Items: {number_of_items}\n\n"
+        ###
     )
-
-    ## Now, we will send the invoice as an email.
-    import smtplib
-    from email.mime.text import MIMEText
     
+    ###
+    ## Now, we will send the invoice as an email with a PDF attachment
+
     # Email account credentials
     sender_email = "susold78@gmail.com"
     sender_password = "eoiz jtje lhyv lhsn"
     receiver_email = current_user["email"]
-    
-    # Create the email
-    msg = MIMEText(message)
+
+    # Generate PDF from message string
+    pdf_buffer = BytesIO()
+    p = canvas.Canvas(pdf_buffer)
+    text_object = p.beginText(40, 800)  # Starting position
+
+    for line in message.split("\n"):
+        text_object.textLine(line)
+    p.drawText(text_object)
+    p.showPage()
+    p.save()
+    pdf_buffer.seek(0)
+
+    # Create the email with attachment
+    msg = MIMEMultipart()
     msg["Subject"] = "SUSOLD Invoice"
     msg["From"] = sender_email
     msg["To"] = receiver_email
-    
-    # SMTP server setup (example for Gmail)
+
+    # Add a plain-text fallback message
+    msg.attach(MIMEText("Please find your invoice attached as a PDF."))
+
+    # Add PDF attachment
+    pdf_attachment = MIMEApplication(pdf_buffer.read(), _subtype="pdf")
+    pdf_attachment.add_header("Content-Disposition", "attachment", filename="invoice.pdf")
+    msg.attach(pdf_attachment)
+
+    # Send the email
     smtp_server = "smtp.gmail.com"
     smtp_port = 587
 
-    # Connect to the server
     server = smtplib.SMTP(smtp_server, smtp_port)
-    server.starttls()  # Secure the connection
+    server.starttls()
     server.login(sender_email, sender_password)
-            
-    # Send the email
     server.sendmail(sender_email, receiver_email, msg.as_string())
     server.quit()
+    ###
 
     return {"message": message}
 
