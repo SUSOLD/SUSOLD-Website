@@ -537,6 +537,25 @@ async def cancel_order(order_id: str, current_user: dict = Depends(get_current_u
 
 
 # -------------------------------
+# Get refunded products of the user
+# -------------------------------
+@main_router.get("/my-refunded-items")
+async def get_my_refunded_items(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    refunds_cursor = refund_collection.find({"user_id": current_user["user_id"], "status": "approved"})
+    refunds = await refunds_cursor.to_list(length=None)
+
+    refunded_items = []
+    for refund in refunds:
+        refunded_items.extend(refund.get("item_ids", []))
+
+    return {"refunded_item_ids": refunded_items}
+
+
+# -------------------------------
 # Send a refund request if the status is 'delivered' and it's been less than 30 days
 # -------------------------------
 @main_router.post("/refund-request/{order_id}")
@@ -680,7 +699,7 @@ async def set_product_price(item_id: str, price: float, current_user: dict = Dep
     if not product:
         raise HTTPException(status_code=404, detail="Product not found.")
 
-    if product.get("price") is not None:
+    if product.get("price") is not 0:
         raise HTTPException(status_code=400, detail="Product already has a price.")
 
     await item_collection.update_one({"item_id": item_id},{"$set": {"price": price}})
@@ -700,7 +719,7 @@ async def get_items_without_price(current_user: dict = Depends(get_current_user)
     if not user.get("isSalesManager", False):
         raise HTTPException(status_code=403, detail="Only sales managers can access items without a price.")
 
-    items_cursor = item_collection.find({"price": None})
+    items_cursor = item_collection.find({"price": 0})
     items = await items_cursor.to_list(length=None)
 
     item_ids = [item["item_id"] for item in items if "item_id" in item]
