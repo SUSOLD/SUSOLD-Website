@@ -141,41 +141,46 @@ export const removeComment = async (feedbackId) => {
 // Kullanıcının satın aldığı ürünleri getir
 // Kullanıcının satın aldığı ürünleri getir
 export const getPurchasedProducts = async () => {
-  // /purchased-products yerine /user-orders endpoint'ini kullanalım
-  const res = await api.get('/user-orders');
-  
-  if (!res.data || res.data.length === 0) {
+  try {
+    // /user-orders endpoint'ini kullan
+    const res = await api.get('/user-orders');
+    
+    if (!res.data || res.data.length === 0) {
+      return [];
+    }
+    
+    const orderGroups = [];
+    
+    for (const order of res.data) {
+      try {
+        const orderItems = [];
+        
+        // Siparişteki her bir ürün ID'si için ürün bilgisini alalım
+        for (const itemId of order.item_ids) {
+          const product = await getProductById(itemId);
+          if (product) {
+            orderItems.push(product);
+          }
+        }
+        
+        // Backend'den gelen sipariş durumunu kullan
+        orderGroups.push({
+          order_id: order.order_id,
+          purchase_date: order.date,
+          status: order.status || 'processing', // Backend'den gelen status bilgisini kullan
+          items: orderItems
+        });
+        
+      } catch (error) {
+        console.error(`Error processing order ${order.order_id}:`, error);
+      }
+    }
+    
+    return orderGroups;
+  } catch (error) {
+    console.error('Error fetching purchased products:', error);
     return [];
   }
-  
-  const orderGroups = [];
-  
-  for (const order of res.data) {
-    try {
-      const orderItems = [];
-      
-      // Siparişteki her bir ürün ID'si için ürün bilgisini alalım
-      for (const itemId of order.item_ids) {
-        const product = await getProductById(itemId);
-        if (product) {
-          orderItems.push(product);
-        }
-      }
-      
-      // Siparişi ve içindeki ürünleri ekleyelim
-      orderGroups.push({
-        order_id: order.order_id,
-        purchase_date: order.date,
-        status: 'processing', // Backend'den gelen status bilgisini de kullanabilirsiniz
-        items: orderItems
-      });
-      
-    } catch (error) {
-      console.error(`Error processing order ${order.order_id}:`, error);
-    }
-  }
-  
-  return orderGroups;
 };
 
 // Bir ürünün işlemde olup olmadığını kontrol et

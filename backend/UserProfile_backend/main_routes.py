@@ -539,10 +539,24 @@ async def get_user_orders(current_user: dict = Depends(get_current_user)):
         order_date = order.get("date")
         item_ids = order.get("item_ids", [])
         
-        # Ürün ID'lerini ve ek sipariş bilgilerini birlikte döndür
+        # Her siparişin durumunu belirlemek için siparişte bulunan ürünlerin durumlarını kontrol et
+        items_status = []
+        for item_id in item_ids:
+            item = await item_collection.find_one({"item_id": item_id})
+            if item:
+                items_status.append(item.get("isSold", "processing"))
+        
+        # Sipariş durumunu belirle (en düşük durum öncelikli)
+        status = "delivered"  # Varsayılan olarak teslim edildi kabul et
+        if "processing" in items_status:
+            status = "processing"  # Eğer herhangi bir ürün işlemde ise, sipariş işlemde
+        elif "inTransit" in items_status:
+            status = "inTransit"  # Eğer herhangi bir ürün kargoda ise ve işlemde olan yoksa, sipariş kargoda
+                
         result.append({
             "order_id": order_id,
             "date": order_date,
+            "status": status,  # Sipariş durumunu da ekle
             "item_ids": item_ids
         })
 

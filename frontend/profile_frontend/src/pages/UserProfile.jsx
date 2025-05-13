@@ -204,7 +204,7 @@ const UserProfile = () => {
         orderMap[order.order_id] = {
           items: order.items,
           date: order.purchase_date,
-          status: order.status,
+          status: order.status, // Backend'den gelen sipariş durumunu kullan
           total_price: totalPrice
         };
       });
