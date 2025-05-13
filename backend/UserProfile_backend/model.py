@@ -132,3 +132,6 @@ class RefundRequest(BaseModel):
     total_price: float
     refund_amount: float  # can be same as total_price or different based on discount
     status: str = "pending"  # "pending", "approved", "rejected"
+
+class RefundRequestBody(BaseModel):
+    item_ids: List[str]

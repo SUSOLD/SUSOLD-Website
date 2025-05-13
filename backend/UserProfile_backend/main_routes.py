@@ -1,12 +1,13 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import HttpUrl
 from typing import List
 from bson import ObjectId
 from datetime import datetime, timezone, timedelta
 from backend.database import users_collection, feedback_collection, item_collection, order_collection, refund_collection
 from backend.registerloginbackend.jwt_handler import get_current_user, get_password_hash
-from backend.UserProfile_backend.model import FeedbackInput, UserUpdate
+from backend.UserProfile_backend.model import FeedbackInput, UserUpdate, RefundRequestBody
 from backend.HomePage_backend.app.schemas import ProductCreate as Product
+from fastapi.encoders import jsonable_encoder
 import smtplib
 from email.mime.text import MIMEText
 from email.message import EmailMessage
@@ -653,10 +654,12 @@ async def get_my_refunded_items(current_user: dict = Depends(get_current_user)):
 # Send a refund request if the status is 'delivered' and it's been less than 30 days
 # -------------------------------
 @main_router.post("/refund-request/{order_id}")
-async def submit_refund_request(order_id: str, item_ids: List[str], current_user: dict = Depends(get_current_user)):
+async def submit_refund_request(order_id: str, body: RefundRequestBody, current_user: dict = Depends(get_current_user)):
     order = await order_collection.find_one({"order_id": order_id, "user_id": current_user["user_id"]})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    
+    item_ids = body.item_ids
 
     purchase_date_str = order.get("date")
     if not purchase_date_str:
@@ -696,6 +699,14 @@ async def submit_refund_request(order_id: str, item_ids: List[str], current_user
 # -------------------------------
 # Display refund requests - SALES MANAGEEERRRRR
 # -------------------------------
+def serialize_mongo_document(doc):
+    """Convert ObjectId fields in a MongoDB document to strings."""
+    if "_id" in doc:
+        doc["_id"] = str(doc["_id"])
+    if "user_id" in doc and isinstance(doc["user_id"], ObjectId):
+        doc["user_id"] = str(doc["user_id"])
+    return doc
+
 @main_router.get("/refund-requests")
 async def view_refund_requests(current_user: dict = Depends(get_current_user)):
     user = await users_collection.find_one({"user_id": current_user["user_id"]})
@@ -706,14 +717,16 @@ async def view_refund_requests(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Only sales managers can view refund requests.")
     
     requests = await refund_collection.find({"status": "pending"}).to_list(length=100)
-    return requests
+    
+    serialized_requests = [serialize_mongo_document(r) for r in requests]
+    return serialized_requests
 
 
 # -------------------------------
 # Approve/reject refund requests - SALES MANAGEEERRRRR
 # -------------------------------
 @main_router.post("/handle-refund-request/{order_id}")
-async def handle_refund(order_id: str, action: str, current_user: dict = Depends(get_current_user)):
+async def handle_refund(order_id: str, action: str = Query(...), current_user: dict = Depends(get_current_user)):
     user = await users_collection.find_one({"user_id": current_user["user_id"]})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -793,7 +806,7 @@ async def set_product_price(item_id: str, price: float, current_user: dict = Dep
     if not product:
         raise HTTPException(status_code=404, detail="Product not found.")
 
-    if product.get("price") is not 0:
+    if product.get("price") != 0:
         raise HTTPException(status_code=400, detail="Product already has a price.")
 
     await item_collection.update_one({"item_id": item_id},{"$set": {"price": price}})
