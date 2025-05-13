@@ -1,9 +1,23 @@
-// frontend/pages/UserProfile.jsx
 import React, { useState, useEffect } from 'react';
-import { Star, Edit, Package, MessageSquare, Check, X, Plus, LogOut, AlertTriangle, ThumbsUp } from 'lucide-react';
-import { getUserProfile, removeProduct, getProductById, getUnapprovedComments, approveComment, removeComment } from '../services/apiService';
+import { Star, Edit, Package, MessageSquare, Check, X, Plus, LogOut, AlertTriangle, ThumbsUp, ShoppingBag, RefreshCw, Truck, Map } from 'lucide-react';
+import { 
+  getUserProfile, 
+  removeProduct, 
+  getProductById, 
+  getUnapprovedComments, 
+  approveComment, 
+  removeComment,
+  getPurchasedProducts,
+  isItemProcessing,
+  cancelOrder,
+  submitRefundRequest,
+  getRefundRequests,
+  handleRefundRequest,
+  getItemsWithoutPrice,
+  setProductPrice 
+} from '../services/apiService';
 import { useNavigate, Link } from 'react-router-dom';
-import AuthService from '../services/AuthService'; 
+import AuthService from '../services/AuthService';
 
 const UserProfile = () => {
   const [userData, setUserData] = useState({
@@ -14,13 +28,25 @@ const UserProfile = () => {
     is_verified: false,
     isManager: false, // Yeni eklenen özellik
     offerings: [],
-    comments: []
+    comments: [],
+    isSalesManager: false // Yeni eklenen Sales Manager rolü
   });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('offerings');
   const [unapprovedComments, setUnapprovedComments] = useState([]);
   const [approvalLoading, setApprovalLoading] = useState(false);
   const navigate = useNavigate();
+  // Satın alınan ürünler ve siparişler için yeni state değişkenleri
+  const [purchasedItems, setPurchasedItems] = useState([]);
+  const [purchasedItemsLoading, setPurchasedItemsLoading] = useState(false);
+  const [orderDetails, setOrderDetails] = useState({});
+
+  // Sales Manager özelliği için yeni state değişkenleri
+  const [refundRequests, setRefundRequests] = useState([]);
+  const [refundRequestLoading, setRefundRequestLoading] = useState(false);
+  const [itemsWithoutPrice, setItemsWithoutPrice] = useState([]);
+  const [newPrice, setNewPrice] = useState({});
+  const [priceLoading, setPriceLoading] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -50,7 +76,8 @@ const UserProfile = () => {
           profileImage: profileData.photo?.[0] || null,
           rating: profileData.rating,
           is_verified: profileData.is_verified,
-          isManager: profileData.isManager, // Yeni eklenen özellik
+          isManager: profileData.isManager,
+          isSalesManager: profileData.isSalesManager, // Yeni eklenen değer 
           offerings: offeringProducts,
           comments: profileData.feedbacksReceived?.map(fb => ({
             id: fb._id,
@@ -65,6 +92,12 @@ const UserProfile = () => {
         // Yönetici ise onaylanmamış yorumları da yükle
         if (profileData.isManager) {
           fetchUnapprovedComments();
+        }
+        
+        // Sales Manager içeriğini yükle
+        if (profileData.isSalesManager) {
+          fetchRefundRequests();
+          fetchItemsWithoutPrice();
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
@@ -141,12 +174,166 @@ const UserProfile = () => {
     AuthService.logout();  // Clear token from localStorage
     navigate('/login');    // Redirect to login page
   };
+  useEffect(() => {
+    if (activeTab === 'purchases') {
+      fetchPurchasedProducts();
+    }
+  }, [activeTab]);
 
   const renderStars = (rating) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star key={i} size={16} fill={i < rating ? '#FFD700' : 'none'} color={i < rating ? '#FFD700' : '#D1D5DB'} />
     ));
   };
+  // Satın alınan ürünleri getir
+// Satın alınan ürünleri getir
+const fetchPurchasedProducts = async () => {
+  try {
+    setPurchasedItemsLoading(true);
+    const orders = await getPurchasedProducts();
+    
+    // API'den gelen verileri doğrudan orderDetails state'ine aktarıyoruz
+    const orderMap = {};
+    
+    orders.forEach(order => {
+      let totalPrice = 0;
+      
+      // Siparişteki tüm ürünlerin toplam fiyatını hesapla
+      order.items.forEach(item => {
+        totalPrice += item.price || 0;
+      });
+      
+      orderMap[order.order_id] = {
+        items: order.items, 
+        date: order.purchase_date,
+        status: order.status,
+        total_price: totalPrice
+      };
+    });
+    
+    setOrderDetails(orderMap);
+  } catch (error) {
+    console.error('Error fetching purchased products:', error);
+  } finally {
+    setPurchasedItemsLoading(false);
+  }
+};
+
+// Sipariş iptali
+const handleCancelOrder = async (orderId) => {
+  try {
+    await cancelOrder(orderId);
+    
+    // Yerel state'i güncelle
+    setOrderDetails(prev => {
+      const updated = {...prev};
+      if (updated[orderId]) {
+        delete updated[orderId];
+      }
+      return updated;
+    });
+    
+    alert('Order cancelled successfully');
+  } catch (error) {
+    console.error('Error cancelling order:', error);
+    alert('Failed to cancel order: ' + error.response?.data?.detail || error.message);
+  }
+};
+
+// İade talebi
+const handleRefundRequest = async (orderId, itemIds) => {
+  try {
+    await submitRefundRequest(orderId, itemIds);
+    
+    // Sipariş durumunu yerel olarak güncelle
+    setOrderDetails(prev => {
+      const updated = {...prev};
+      if (updated[orderId]) {
+        updated[orderId].refundRequested = true;
+      }
+      return updated;
+    });
+    
+    alert('Refund request submitted successfully');
+  } catch (error) {
+    console.error('Error requesting refund:', error);
+    alert('Failed to submit refund request: ' + error.response?.data?.detail || error.message);
+  }
+};
+
+// İade taleplerini getir (Sales Manager için)
+const fetchRefundRequests = async () => {
+  try {
+    setRefundRequestLoading(true);
+    const requests = await getRefundRequests();
+    setRefundRequests(requests);
+  } catch (error) {
+    console.error('Error fetching refund requests:', error);
+  } finally {
+    setRefundRequestLoading(false);
+  }
+};
+
+// İade talebini işle (onaylama/reddetme)
+const processRefundRequest = async (orderId, action) => {
+  try {
+    setRefundRequestLoading(true);
+    await handleRefundRequest(orderId, action);
+    
+    // Yerel state'i güncelle
+    setRefundRequests(prev => prev.filter(req => req.order_id !== orderId));
+    
+    alert(`Refund request ${action}d successfully`);
+  } catch (error) {
+    console.error(`Error ${action}ing refund request:`, error);
+    alert(`Failed to ${action} refund: ` + error.response?.data?.detail || error.message);
+  } finally {
+    setRefundRequestLoading(false);
+  }
+};
+
+// Fiyatı olmayan ürünleri getir (Sales Manager için)
+const fetchItemsWithoutPrice = async () => {
+  try {
+    setPriceLoading(true);
+    const items = await getItemsWithoutPrice();
+    setItemsWithoutPrice(items.items_with_no_price || []);
+  } catch (error) {
+    console.error('Error fetching items without price:', error);
+  } finally {
+    setPriceLoading(false);
+  }
+};
+
+// Ürün fiyatını ayarla
+const handleSetPrice = async (itemId) => {
+  try {
+    setPriceLoading(true);
+    const price = parseFloat(newPrice[itemId]);
+    if (isNaN(price) || price <= 0) {
+      alert('Please enter a valid price');
+      return;
+    }
+    
+    await setProductPrice(itemId, price);
+    
+    // Yerel state'i güncelle
+    setItemsWithoutPrice(prev => prev.filter(id => id !== itemId));
+    setNewPrice(prev => {
+      const updated = {...prev};
+      delete updated[itemId];
+      return updated;
+    });
+    
+    alert('Price set successfully');
+  } catch (error) {
+    console.error('Error setting price:', error);
+    alert('Failed to set price: ' + error.response?.data?.detail || error.message);
+  } finally {
+    setPriceLoading(false);
+  }
+};
+
 
   if (loading) {
     return <div className="flex justify-center items-center min-h-screen"><p className="text-lg">Loading...</p></div>;
@@ -234,7 +421,230 @@ const UserProfile = () => {
             )}
           </div>
         );
-        
+        case 'purchases':
+          return (
+            <div className="grid grid-cols-1 gap-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-800">My Purchases</h2>
+              </div>
+              
+              {purchasedItemsLoading ? (
+                <div className="text-center py-10">
+                  <RefreshCw size={40} className="text-blue-500 mx-auto mb-3 animate-spin" />
+                  <p className="text-gray-500">Loading your purchases...</p>
+                </div>
+              ) : Object.keys(orderDetails).length > 0 ? (
+                Object.entries(orderDetails).map(([orderId, order]) => (
+                  <div key={orderId} className="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div className="border-b border-gray-200 bg-gray-50 px-6 py-4">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900">Order #{orderId.substring(0, 8)}</h3>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Placed on {new Date(order.date).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="mt-2 md:mt-0 flex items-center">
+                          <span 
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                              ${order.status === 'processing' ? 'bg-blue-100 text-blue-800' : 
+                                order.status === 'inTransit' ? 'bg-yellow-100 text-yellow-800' : 
+                                'bg-green-100 text-green-800'}`}
+                          >
+                            {order.status === 'processing' ? <RefreshCw size={14} className="mr-1" /> : 
+                              order.status === 'inTransit' ? <Truck size={14} className="mr-1" /> : 
+                              <Check size={14} className="mr-1" />}
+                            {order.status === 'processing' ? 'Processing' : 
+                              order.status === 'inTransit' ? 'In Transit' : 'Delivered'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="px-6 py-4">
+                      <ul className="divide-y divide-gray-200">
+                        {order.items.map((item) => (
+                          <li key={item.item_id} className="py-4 flex">
+                            <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
+                              {item.image ? (
+                                <img src={item.image} alt={item.title} className="h-full w-full object-cover object-center" />
+                              ) : (
+                                <div className="flex items-center justify-center h-full w-full bg-gray-100 text-gray-400">
+                                  <Package size={24} />
+                                </div>
+                              )}
+                            </div>
+                            <div className="ml-4 flex flex-1 flex-col">
+                              <div>
+                                <div className="flex justify-between text-base font-medium text-gray-900">
+                                  <h3>{item.title}</h3>
+                                  <p className="ml-4">{item.price} ₺</p>
+                                </div>
+                                <p className="mt-1 text-sm text-gray-500">{item.category}</p>
+                              </div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
+                      <div className="flex justify-between text-base font-medium text-gray-900">
+                        <p>Total</p>
+                        <p>{order.total_price.toFixed(2)} ₺</p>
+                      </div>
+                      
+                      <div className="mt-4 flex justify-end space-x-3">
+                        {order.status === 'processing' && (
+                          <button
+                            onClick={() => handleCancelOrder(orderId)}
+                            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                          >
+                            <X size={16} className="mr-1" />
+                            Cancel Order
+                          </button>
+                        )}
+                        
+                        {order.status === 'delivered' && !order.refundRequested && (
+                          <button
+                            onClick={() => handleRefundRequest(orderId, order.items.map(item => item.item_id))}
+                            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                          >
+                            <RefreshCw size={16} className="mr-1" />
+                            Request Refund
+                          </button>
+                        )}
+                        
+                        {order.refundRequested && (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                            Refund Requested
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full text-center py-8 bg-white rounded-lg shadow-sm">
+                  <ShoppingBag size={40} className="text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500">No purchases yet.</p>
+                </div>
+              )}
+            </div>
+          );
+          
+        case 'refundRequests':
+          return (
+            <div className="grid grid-cols-1 gap-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-800">Refund Requests</h2>
+              </div>
+              
+              {refundRequestLoading ? (
+                <div className="text-center py-10">
+                  <RefreshCw size={40} className="text-blue-500 mx-auto mb-3 animate-spin" />
+                  <p className="text-gray-500">Loading refund requests...</p>
+                </div>
+              ) : refundRequests.length > 0 ? (
+                refundRequests.map((request) => (
+                  <div key={request.order_id} className="bg-white rounded-lg shadow-md p-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900">Refund Request #{request.order_id.substring(0, 8)}</h3>
+                        <p className="text-sm text-gray-500 mt-1">User ID: {request.user_id}</p>
+                      </div>
+                      <p className="font-medium text-blue-600 mt-2 md:mt-0">
+                        Refund Amount: {request.refund_amount.toFixed(2)} ₺
+                      </p>
+                    </div>
+                    
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Items:</h4>
+                      <ul className="pl-5 list-disc text-sm text-gray-600">
+                        {request.item_ids.map((itemId) => (
+                          <li key={itemId}>{itemId}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    <div className="flex justify-end space-x-3">
+                      <button
+                        onClick={() => processRefundRequest(request.order_id, 'approve')}
+                        disabled={refundRequestLoading}
+                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                      >
+                        <Check size={16} className="mr-1" />
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => processRefundRequest(request.order_id, 'reject')}
+                        disabled={refundRequestLoading}
+                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                      >
+                        <X size={16} className="mr-1" />
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full text-center py-8 bg-white rounded-lg shadow-sm">
+                  <AlertTriangle size={40} className="text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500">No refund requests pending.</p>
+                </div>
+              )}
+            </div>
+          );
+          
+        case 'setPrices':
+          return (
+            <div className="grid grid-cols-1 gap-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-800">Set Product Prices</h2>
+              </div>
+              
+              {priceLoading ? (
+                <div className="text-center py-10">
+                  <RefreshCw size={40} className="text-blue-500 mx-auto mb-3 animate-spin" />
+                  <p className="text-gray-500">Loading products...</p>
+                </div>
+              ) : itemsWithoutPrice.length > 0 ? (
+                itemsWithoutPrice.map((itemId) => (
+                  <div key={itemId} className="bg-white rounded-lg shadow-md p-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                      <div className="mb-2 md:mb-0">
+                        <h3 className="font-medium text-gray-900">Product ID: {itemId}</h3>
+                      </div>
+                      <div className="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="Enter price"
+                          value={newPrice[itemId] || ''}
+                          onChange={(e) => setNewPrice({...newPrice, [itemId]: e.target.value})}
+                          className="border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                        <button
+                          onClick={() => handleSetPrice(itemId)}
+                          disabled={priceLoading}
+                          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        >
+                          <Check size={16} className="mr-1" />
+                          Set Price
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full text-center py-8 bg-white rounded-lg shadow-sm">
+                  <Package size={40} className="text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500">No products without prices.</p>
+                </div>
+              )}
+            </div>
+          );    
       case 'unapprovedComments':
         return (
           <div className="grid grid-cols-1 gap-4">
@@ -349,6 +759,12 @@ const UserProfile = () => {
                           Manager
                         </span>
                       )}
+                      {userData.isSalesManager && (
+                        <span className="ml-2 bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full inline-flex items-center">
+                          <Check size={12} className="mr-1" />
+                          Sales Manager
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -381,6 +797,18 @@ const UserProfile = () => {
               <MessageSquare size={18} className="mr-2" />
               Comments
             </button>
+            {/* Yeni sekme: Satın Alınan Ürünler */}
+            <button
+              onClick={() => setActiveTab('purchases')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
+                activeTab === 'purchases'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <ShoppingBag size={18} className="mr-2" />
+              My Purchases
+            </button>
             
             {/* Yönetici ise "Unapproved Comments" sekmesini göster */}
             {userData.isManager && (
@@ -395,6 +823,34 @@ const UserProfile = () => {
                 <AlertTriangle size={18} className="mr-2" />
                 Unapproved Comments
               </button>
+            )}
+
+            {/* Sales Manager sekmeleri */}
+            {userData.isSalesManager && (
+              <>
+                <button
+                  onClick={() => setActiveTab('refundRequests')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
+                    activeTab === 'refundRequests'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <RefreshCw size={18} className="mr-2" />
+                  Refund Requests
+                </button>
+                <button
+                  onClick={() => setActiveTab('setPrices')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
+                    activeTab === 'setPrices'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <Map size={18} className="mr-2" />
+                  Set Prices
+                </button>
+              </>
             )}
           </nav>
         </div>

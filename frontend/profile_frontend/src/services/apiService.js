@@ -22,12 +22,13 @@ api.interceptors.request.use(
 export default api;
 
 export const getUserProfile = async () => {
-  const [nameRes, photoRes, ratingRes, verifiedRes, isManagerRes, offeringsRes, feedbacksRes] = await Promise.all([
+  const [nameRes, photoRes, ratingRes, verifiedRes, isManagerRes, isSalesManagerRes, offeringsRes, feedbacksRes] = await Promise.all([
     api.get('/my_name'),
     api.get('/current_photo'),
     api.get('/current_rating'),
     api.get('/is_verified'),
-    api.get('/is_manager'), // Yeni eklenen isManager sorgusu
+    api.get('/is_manager'),
+    api.get('/is_sales_manager'), // Yeni eklenen sales manager sorgusu
     api.get('/my_offerings'),
     api.get('/my_feedbacks'),
   ]);
@@ -38,7 +39,8 @@ export const getUserProfile = async () => {
     photo: photoRes.data.photo_url,
     rating: ratingRes.data.current_rating,
     is_verified: verifiedRes.data.is_verified,
-    isManager: isManagerRes.data.is_manager, // Yeni eklenen değer
+    isManager: isManagerRes.data.is_manager,
+    isSalesManager: isSalesManagerRes.data.is_sales_manager, // Yeni eklenen değer
     offerings: offeringsRes.data.offerings,
     feedbacksReceived: feedbacksRes.data.feedbacks_received
   };
@@ -120,8 +122,7 @@ export const getProductById = async (item_id) => {
   return res.data;
 };
 
-// Yeni eklenen fonksiyonlar - Yönetici özellikleri için
-
+// Yönetici özellikleri için
 export const getUnapprovedComments = async () => {
   const res = await api.get('/unapproved_comments');
   return res.data.unapproved_comments;
@@ -134,6 +135,109 @@ export const approveComment = async (feedbackId) => {
 export const removeComment = async (feedbackId) => {
   return await api.delete(`/remove_comment/${feedbackId}`);
 };
+
+// --- Yeni Eklenen API Fonksiyonları: Satın Alınan Ürünler ---
+
+// Kullanıcının satın aldığı ürünleri getir
+// Kullanıcının satın aldığı ürünleri getir
+export const getPurchasedProducts = async () => {
+  const res = await api.get('/purchased-products');
+  
+  // Eğer dönüş boş array ise hemen dön
+  if (!res.data || res.data.length === 0) {
+    return [];
+  }
+  
+  // Önce ürünlerin sipariş ID'lerine göre gruplandırılmasını yapalım
+  const orderGroups = {};
+  
+  for (const itemId of res.data) {
+    try {
+      const product = await getProductById(itemId);
+      
+      // Backend'den gerçek sipariş bilgisini almaya çalış 
+      // Ürün sipariş ilişkisini bulabilmek için backend'e itemId sorgusu yap
+      // NOT: Bu sorguyu backend'iniz destekliyorsa kullanın
+      
+      // Backend bu bilgiyi vermiyorsa, ürünlerin hepsini tek bir sipariş altında gösterelim
+      const orderId = product.order_id || 'ORDER' + Math.random().toString(36).substr(2, 6);
+      
+      if (!orderGroups[orderId]) {
+        orderGroups[orderId] = {
+          order_id: orderId,
+          purchase_date: product.purchase_date || new Date().toISOString(),
+          status: product.status || 'processing', // processing, inTransit, delivered
+          items: []
+        };
+      }
+      
+      // Ürünü ilgili siparişe ekle
+      orderGroups[orderId].items.push(product);
+    } catch (error) {
+      console.error(`Error fetching product with ID ${itemId}:`, error);
+    }
+  }
+  
+  // Gruplandırılmış sipariş bilgilerini bir array'e dönüştür
+  const groupedOrders = Object.values(orderGroups);
+  return groupedOrders;
+};
+
+// Bir ürünün işlemde olup olmadığını kontrol et
+export const isItemProcessing = async (itemId) => {
+  try {
+    const res = await api.get('/is_processing', {
+      params: { item_id: itemId }
+    });
+    return res.data; // Boolean değer döner (true/false)
+  } catch (error) {
+    console.error('Error checking if item is processing:', error);
+    return false;
+  }
+};
+
+// Siparişi iptal et
+export const cancelOrder = async (orderId) => {
+  return await api.post(`/cancel-order/${orderId}`);
+};
+
+// İade talebi gönder
+export const submitRefundRequest = async (orderId, itemIds) => {
+  return await api.post(`/refund-request/${orderId}`, { item_ids: itemIds });
+};
+
+// --- Satış Yöneticisi (Sales Manager) API Fonksiyonları ---
+
+// İade taleplerini getir
+export const getRefundRequests = async () => {
+  const res = await api.get('/refund-requests');
+  return res.data;
+};
+
+// İade talebini işle (onaylama/reddetme)
+export const handleRefundRequest = async (orderId, action) => {
+  if (action !== 'approve' && action !== 'reject') {
+    throw new Error('Invalid action. Must be "approve" or "reject"');
+  }
+  
+  return await api.post(`/handle-refund-request/${orderId}`, null, {
+    params: { action }
+  });
+};
+
+// Fiyatı olmayan ürünleri getir
+export const getItemsWithoutPrice = async () => {
+  const res = await api.get('/items-without-price');
+  return res.data;
+};
+
+// Ürün fiyatını ayarla
+export const setProductPrice = async (itemId, price) => {
+  return await api.post(`/set-price/${itemId}`, null, {
+    params: { price }
+  });
+};
+
 // --- AUTH ---
 export const authAPI = {
   register: (userData) => api.post('/auth/register', userData),

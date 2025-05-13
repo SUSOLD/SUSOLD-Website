@@ -80,7 +80,7 @@ async def get_is_delivered(item_id: str, current_user: dict = Depends(get_curren
 
     if not product:
         raise HTTPException(status_code=404, detail="Product not found.")
-   
+
     return product.get("isSold") == "delivered"
 
 
