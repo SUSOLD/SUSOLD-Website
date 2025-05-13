@@ -83,3 +83,16 @@ async def get_is_delivered(item_id: str, current_user: dict = Depends(get_curren
    
     return product.get("isSold") == "delivered"
 
+
+@router.get("/is_processing")
+async def is_item_processing(item_id: str, current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    item = await item_collection.find_one({"item_id": item_id})
+    
+    if not item:
+        raise HTTPException(status_code=404, detail="Product not found") 
+    
+    return item.get("isSold") == "processing"

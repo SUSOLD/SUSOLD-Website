@@ -58,6 +58,7 @@ class User(BaseModel):
     credit_cards: List[creditCard] = []     #input
     addresses: List[str] = []               #input
     isManager: bool = False                 #input
+    isSalesManager: bool = False            #input
 
     isVerified: bool = False
     user_id: str                          # we will generate this!!!
@@ -121,3 +122,13 @@ class UserUpdate(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
+
+# -----------------------------------------------
+
+class RefundRequest(BaseModel):
+    user_id: str
+    item_ids: List[str]
+    order_id: str
+    total_price: float
+    refund_amount: float  # can be same as total_price or different based on discount
+    status: str = "pending"  # "pending", "approved", "rejected"

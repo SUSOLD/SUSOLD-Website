@@ -13,6 +13,7 @@ class UserRegisterModel(BaseModel):
     credit_cards: List[creditCard] = []     #input
     addresses: List[str] = []               #input
     isManager: bool = False
+    isSalesManager: bool = False
 
     @field_validator('email')
     @classmethod
