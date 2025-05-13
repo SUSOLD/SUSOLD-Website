@@ -160,27 +160,38 @@ async def get_unapproved_comments(current_user: dict = Depends(get_current_user)
 # -------------------------------
 # Mark a product as delivered (PRODUCT MANAGERRR)
 # -------------------------------
-@main_router.put("/mark_as_delivered/{item_id}")
-async def mark_product_as_delivered(item_id: str, current_user: dict = Depends(get_current_user)):
+@main_router.put("/mark_status/{item_id}")
+async def update_product_status(item_id: str, status: str, current_user: dict = Depends(get_current_user)):
     user = await users_collection.find_one({"user_id": current_user["user_id"]})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
     if not user.get("isManager", False):
-        raise HTTPException(status_code=403, detail="Not authorized to mark products as delivered.")
+        raise HTTPException(status_code=403, detail="Only product managers are allowed to update product status.")
 
-    # Find the product by item_id
+    valid_statuses = {"processing", "stillInStock", "inTransit", "delivered"}
+    if status not in valid_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+        )
+
     product = await item_collection.find_one({"item_id": item_id})
     if not product:
         raise HTTPException(status_code=404, detail="Product not found.")
+    
+    if status in {"processing", "inTransit", "delivered"}:
+        await item_collection.update_one(
+            {"item_id": item_id},
+            {"$set": {"isSold": status, "inStock": False}}
+        )
+    else:
+        await item_collection.update_one(
+            {"item_id": item_id},
+            {"$set": {"isSold": status, "inStock": True}}
+        )
 
-    # Update the isSold status to "delivered"
-    await item_collection.update_one(
-        {"item_id": item_id},
-        {"$set": {"isSold": "delivered"}}
-    )
-
-    return {"message": "Product marked as delivered successfully."}
+    return {"message": f"Product status updated to '{status}' successfully."}
 
 
 # -------------------------------
