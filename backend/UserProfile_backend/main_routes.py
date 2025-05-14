@@ -1,15 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import HttpUrl
-from typing import List
 from bson import ObjectId
 from datetime import datetime, timezone, timedelta
 from backend.database import users_collection, feedback_collection, item_collection, order_collection, refund_collection
 from backend.registerloginbackend.jwt_handler import get_current_user, get_password_hash
 from backend.UserProfile_backend.model import FeedbackInput, UserUpdate, RefundRequestBody
 from backend.HomePage_backend.app.schemas import ProductCreate as Product
-from fastapi.encoders import jsonable_encoder
 import smtplib
-from email.mime.text import MIMEText
 from email.message import EmailMessage
 
 async def send_email_notification(to_email: str, subject: str, body: str):
@@ -30,8 +27,122 @@ async def send_email_notification(to_email: str, subject: str, body: str):
     except Exception as e:
         print("Email sending failed:", e)
 
-
 main_router = APIRouter()
+
+
+# ---------------------------------------------------------------------------------------------
+#                                       GETTER METHODS
+# ---------------------------------------------------------------------------------------------
+
+
+# -------------------------------
+# Display isManager value of the user
+# -------------------------------
+@main_router.get("/is_manager")
+async def is_user_manager(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+     
+    is_manager = user.get("isManager", False)
+    return {"is_manager": is_manager}
+
+
+# -------------------------------
+# Display isSalesManager value of the user
+# -------------------------------
+@main_router.get("/is_sales_manager")
+async def is_user_sales_manager(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+     
+    is_sales_manager = user.get("isSalesManager", False)
+    return {"is_sales_manager": is_sales_manager}
+
+
+# -------------------------------
+# Return name and lastname of current user
+# -------------------------------
+@main_router.get("/my_name")
+async def get_my_name(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"name": user.get("name"), "lastname": user.get("lastname")}
+
+
+# -------------------------------
+# Show photo of the user
+# -------------------------------
+@main_router.get("/current_photo")
+async def get_current_photo(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    photo_url = user.get("photo", [])
+    return {"photo_url": photo_url}
+
+
+# -------------------------------
+# Show current rating the user
+# -------------------------------
+@main_router.get("/current_rating")
+async def get_current_rating(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"current_rating": user.get("rating", 0.0)}
+
+
+# -------------------------------
+# Display is_Verified value of the user
+# -------------------------------
+@main_router.get("/is_verified")
+async def is_user_verified(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    is_verified = user.get("is_Verified", False)
+    return {"is_verified": is_verified}
+
+
+# -------------------------------
+# Update profile information
+# -------------------------------
+@main_router.put("/update_user_info")
+async def update_user_info(update_data: UserUpdate, current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user_id = user.get("user_id")
+
+    update_dict = update_data.model_dump(exclude_unset=True)
+    if not update_dict:
+        raise HTTPException(status_code=400, detail="No data provided for update.")
+
+    try:
+        validated = UserUpdate(**update_dict)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if "password" in update_dict:
+        update_dict["password"] = get_password_hash(update_dict["password"])
+
+    await users_collection.update_one({"user_id": current_user["user_id"]}, {"$set": update_dict})
+
+    return {"message": "User information updated successfully"}
+
+
+# ---------------------------------------------------------------------------------------------
+#                                       OTHER USER METHODS
+# ---------------------------------------------------------------------------------------------
+
 
 # -------------------------------
 # Send a feedback to a specific seller
@@ -135,196 +246,6 @@ async def get_seller_feedbacks(seller_id: str):
         })
 
     return {"feedbacks_received": feedback_list}
-
-
-# -------------------------------
-# Show unapproved comments (PRODUCT MANAGEERRRRR)
-# -------------------------------
-@main_router.get("/unapproved_comments")
-async def get_unapproved_comments(current_user: dict = Depends(get_current_user)):
-    user = await users_collection.find_one({"user_id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    if not user.get("isManager", False):
-        raise HTTPException(status_code=403, detail="Not authorized to display comments.")
-
-    feedbacks = await feedback_collection.find({"comment": {"$ne": None}, "isCommentVerified": False}).to_list(length=None)
-
-    # Serialize feedbacks (convert ObjectId to string)
-    for fb in feedbacks:
-        fb["_id"] = str(fb["_id"])
-
-    return {"unapproved_comments": feedbacks}
-
-
-# -------------------------------
-# Mark a product as delivered (PRODUCT MANAGERRR)
-# -------------------------------
-@main_router.put("/mark_status/{item_id}")
-async def update_product_status(item_id: str, status: str, current_user: dict = Depends(get_current_user)):
-    user = await users_collection.find_one({"user_id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if not user.get("isManager", False):
-        raise HTTPException(status_code=403, detail="Only product managers are allowed to update product status.")
-
-    valid_statuses = {"processing", "stillInStock", "inTransit", "delivered"}
-    if status not in valid_statuses:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
-        )
-
-    product = await item_collection.find_one({"item_id": item_id})
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found.")
-    
-    if status in {"processing", "inTransit", "delivered"}:
-        await item_collection.update_one(
-            {"item_id": item_id},
-            {"$set": {"isSold": status, "inStock": False}}
-        )
-    else:
-        await item_collection.update_one(
-            {"item_id": item_id},
-            {"$set": {"isSold": status, "inStock": True}}
-        )
-
-    return {"message": f"Product status updated to '{status}' successfully."}
-
-
-# -------------------------------
-# Approve a comment (PRODUCT MANAGERR)
-# -------------------------------
-@main_router.post("/approve_comment/{feedback_id}")
-async def approve_comment(feedback_id: str, current_user: dict = Depends(get_current_user)):
-    user = await users_collection.find_one({"user_id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if not user.get("isManager", False):
-       raise HTTPException(status_code=403, detail="Not authorized to approve a comment.")
-
-    try:
-        feedback_obj_id = ObjectId(feedback_id)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid feedback ID format.")
-
-    result = await feedback_collection.update_one(
-        {"_id": feedback_obj_id, "comment": {"$ne": None}},
-        {"$set": {"isCommentVerified": True}}
-    )
-
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Feedback not found or no comment to approve.")
-
-    return {"message": "Comment approved successfully."}
-
-
-# -------------------------------
-# Remove a comment (PRODUCT MANAGERRR)
-# -------------------------------
-@main_router.delete("/remove_comment/{feedback_id}")
-async def remove_comment(feedback_id: str, current_user: dict = Depends(get_current_user)):
-    user = await users_collection.find_one({"user_id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if not user.get("isManager", False):
-        raise HTTPException(status_code=403, detail="Not authorized to remove comments.")
-
-    try:
-        feedback_obj_id = ObjectId(feedback_id)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid feedback ID format.")
-
-    result = await feedback_collection.update_one(
-        {"_id": feedback_obj_id, "comment": {"$ne": None}},
-        {"$set": {"comment": None, "isCommentVerified": False}}
-    )
-
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Comment not found or already removed.")
-
-    return {"message": "Comment removed successfully."}
-
-
-# -------------------------------
-# Display isManager value of the user
-# -------------------------------
-@main_router.get("/is_manager")
-async def is_user_manager(current_user: dict = Depends(get_current_user)):
-    user = await users_collection.find_one({"user_id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-     
-    is_manager = user.get("isManager", False)
-    return {"is_manager": is_manager}
-
-
-# -------------------------------
-# Display isSalesManager value of the user
-# -------------------------------
-@main_router.get("/is_sales_manager")
-async def is_user_sales_manager(current_user: dict = Depends(get_current_user)):
-    user = await users_collection.find_one({"user_id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-     
-    is_sales_manager = user.get("isSalesManager", False)
-    return {"is_sales_manager": is_sales_manager}
-
-
-# -------------------------------
-# Return name and lastname of current user
-# -------------------------------
-@main_router.get("/my_name")
-async def get_my_name(current_user: dict = Depends(get_current_user)):
-    user = await users_collection.find_one({"user_id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    return {"name": user.get("name"), "lastname": user.get("lastname")}
-
-
-# -------------------------------
-# Show photo of the user
-# -------------------------------
-@main_router.get("/current_photo")
-async def get_current_photo(current_user: dict = Depends(get_current_user)):
-    user = await users_collection.find_one({"user_id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    photo_url = user.get("photo", [])
-    return {"photo_url": photo_url}
-
-
-# -------------------------------
-# Show current rating the user
-# -------------------------------
-@main_router.get("/current_rating")
-async def get_current_rating(current_user: dict = Depends(get_current_user)):
-    user = await users_collection.find_one({"user_id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    return {"current_rating": user.get("rating", 0.0)}
-
-
-# -------------------------------
-# Display is_Verified value of the user
-# -------------------------------
-@main_router.get("/is_verified")
-async def is_user_verified(current_user: dict = Depends(get_current_user)):
-    user = await users_collection.find_one({"user_id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    is_verified = user.get("is_Verified", False)
-    return {"is_verified": is_verified}
 
 
 # -------------------------------
@@ -474,35 +395,7 @@ async def remove_from_favorites(product_id: str, current_user: dict = Depends(ge
 
 
 # -------------------------------
-# Remove a product from favorites
-# -------------------------------
-@main_router.put("/update_user_info")
-async def update_user_info(update_data: UserUpdate, current_user: dict = Depends(get_current_user)):
-    user = await users_collection.find_one({"user_id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    user_id = user.get("user_id")
-
-    update_dict = update_data.model_dump(exclude_unset=True)
-    if not update_dict:
-        raise HTTPException(status_code=400, detail="No data provided for update.")
-
-    try:
-        validated = UserUpdate(**update_dict)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    if "password" in update_dict:
-        update_dict["password"] = get_password_hash(update_dict["password"])
-
-    await users_collection.update_one({"user_id": current_user["user_id"]}, {"$set": update_dict})
-
-    return {"message": "User information updated successfully"}
-
-
-# -------------------------------
-# Display all purchased products - ADD DATES AND STATUS TO ORDER MODEL, THEN UPDATE THE CODE
+# Display all purchased products 
 # -------------------------------
 @main_router.get("/purchased-products")
 async def get_purchased_products(current_user: dict = Depends(get_current_user)):
@@ -522,6 +415,10 @@ async def get_purchased_products(current_user: dict = Depends(get_current_user))
 
     return purchased_items
 
+
+# -------------------------------
+# Display all orders for the current user 
+# -------------------------------
 @main_router.get("/user-orders")
 async def get_user_orders(current_user: dict = Depends(get_current_user)):
     user = await users_collection.find_one({"user_id": current_user["user_id"]})
@@ -568,48 +465,6 @@ async def get_user_orders(current_user: dict = Depends(get_current_user)):
             "item_ids": item_ids
         })
 
-    return result
-
-@main_router.get("/all-orders")
-async def get_all_orders(current_user: dict = Depends(get_current_user)):
-    user = await users_collection.find_one({"user_id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Sadece product manager'lar tüm siparişleri görebilir
-    if not user.get("isManager", False):
-        raise HTTPException(status_code=403, detail="Only product managers can view all orders")
-    
-    # Tüm siparişleri getir
-    orders_cursor = order_collection.find({})
-    orders = await orders_cursor.to_list(length=1000)
-    
-    result = []
-    for order in orders:
-        # Siparişin temel bilgilerini al
-        order_data = {
-            "order_id": order.get("order_id"),
-            "user_id": order.get("user_id"),
-            "date": order.get("date"),
-            "items": []
-        }
-        
-        # Her siparişteki ürünleri getir
-        for item_id in order.get("item_ids", []):
-            item = await item_collection.find_one({"item_id": item_id})
-            if item:
-                order_data["items"].append({
-                    "item_id": item.get("item_id"),
-                    "title": item.get("title"),
-                    "image": item.get("image", [None])[0],  # İlk resmi al veya None
-                    "price": item.get("price"),
-                    "category": item.get("category"),
-                    "status": item.get("isSold", "processing"),
-                    "inStock": item.get("inStock", False)
-                })
-        
-        result.append(order_data)
-    
     return result
 
 
@@ -702,6 +557,217 @@ async def submit_refund_request(order_id: str, body: RefundRequestBody, current_
 
     await refund_collection.insert_one(request_doc)
     return {"message": "Refund request submitted and pending review."}
+
+
+# ---------------------------------------------------------------------------------------------
+#                                    PRODUCT MANAGER METHODS
+# ---------------------------------------------------------------------------------------------
+
+
+# -------------------------------
+# Show unapproved comments (PRODUCT MANAGEERRRRR)
+# -------------------------------
+@main_router.get("/unapproved_comments")
+async def get_unapproved_comments(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not user.get("isManager", False):
+        raise HTTPException(status_code=403, detail="Not authorized to display comments.")
+
+    feedbacks = await feedback_collection.find({"comment": {"$ne": None}, "isCommentVerified": False}).to_list(length=None)
+
+    # Serialize feedbacks (convert ObjectId to string)
+    for fb in feedbacks:
+        fb["_id"] = str(fb["_id"])
+
+    return {"unapproved_comments": feedbacks}
+
+
+# -------------------------------
+# Mark a product as delivered (PRODUCT MANAGERRR)
+# -------------------------------
+@main_router.put("/mark_status/{item_id}")
+async def update_product_status(item_id: str, status: str, current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not user.get("isManager", False):
+        raise HTTPException(status_code=403, detail="Only product managers are allowed to update product status.")
+
+    valid_statuses = {"processing", "stillInStock", "inTransit", "delivered"}
+    if status not in valid_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+        )
+
+    product = await item_collection.find_one({"item_id": item_id})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found.")
+    
+    if status in {"processing", "inTransit", "delivered"}:
+        await item_collection.update_one(
+            {"item_id": item_id},
+            {"$set": {"isSold": status, "inStock": False}}
+        )
+    else:
+        await item_collection.update_one(
+            {"item_id": item_id},
+            {"$set": {"isSold": status, "inStock": True}}
+        )
+
+    return {"message": f"Product status updated to '{status}' successfully."}
+
+
+# -------------------------------
+# Approve a comment (PRODUCT MANAGERR)
+# -------------------------------
+@main_router.post("/approve_comment/{feedback_id}")
+async def approve_comment(feedback_id: str, current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not user.get("isManager", False):
+       raise HTTPException(status_code=403, detail="Not authorized to approve a comment.")
+
+    try:
+        feedback_obj_id = ObjectId(feedback_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid feedback ID format.")
+
+    result = await feedback_collection.update_one(
+        {"_id": feedback_obj_id, "comment": {"$ne": None}},
+        {"$set": {"isCommentVerified": True}}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Feedback not found or no comment to approve.")
+
+    return {"message": "Comment approved successfully."}
+
+
+# -------------------------------
+# Remove a comment (PRODUCT MANAGERRR)
+# -------------------------------
+@main_router.delete("/remove_comment/{feedback_id}")
+async def remove_comment(feedback_id: str, current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not user.get("isManager", False):
+        raise HTTPException(status_code=403, detail="Not authorized to remove comments.")
+
+    try:
+        feedback_obj_id = ObjectId(feedback_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid feedback ID format.")
+
+    result = await feedback_collection.update_one(
+        {"_id": feedback_obj_id, "comment": {"$ne": None}},
+        {"$set": {"comment": None, "isCommentVerified": False}}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Comment not found or already removed.")
+
+    return {"message": "Comment removed successfully."}
+
+
+# -------------------------------
+# Display all orders - PRODUCT MANAGER
+# -------------------------------
+@main_router.get("/all-orders")
+async def get_all_orders(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Sadece product manager'lar tüm siparişleri görebilir
+    if not user.get("isManager", False):
+        raise HTTPException(status_code=403, detail="Only product managers can view all orders")
+    
+    # Tüm siparişleri getir
+    orders_cursor = order_collection.find({})
+    orders = await orders_cursor.to_list(length=1000)
+    
+    result = []
+    for order in orders:
+        # Siparişin temel bilgilerini al
+        order_data = {
+            "order_id": order.get("order_id"),
+            "user_id": order.get("user_id"),
+            "date": order.get("date"),
+            "items": []
+        }
+        
+        # Her siparişteki ürünleri getir
+        for item_id in order.get("item_ids", []):
+            item = await item_collection.find_one({"item_id": item_id})
+            if item:
+                order_data["items"].append({
+                    "item_id": item.get("item_id"),
+                    "title": item.get("title"),
+                    "image": item.get("image", [None])[0],  # İlk resmi al veya None
+                    "price": item.get("price"),
+                    "category": item.get("category"),
+                    "status": item.get("isSold", "processing"),
+                    "inStock": item.get("inStock", False)
+                })
+        
+        result.append(order_data)
+    
+    return result
+
+
+# ---------------------------------------------------------------------------------------------
+#                                    SALES MANAGER METHODS
+# ---------------------------------------------------------------------------------------------
+
+
+# -------------------------------
+# Display refund requests - SALES MANAGEEERRRRR
+# -------------------------------
+@main_router.get("/refund-requests")
+async def view_refund_requests(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not user.get("isSalesManager", False):
+        raise HTTPException(status_code=403, detail="Only sales managers can view refund requests.")
+    
+    requests = await refund_collection.find({"status": "pending"}).to_list(length=100)
+    
+    result = []
+    for request in requests:
+        item_details = []
+        for item_id in request.get("item_ids", []):
+            item = await item_collection.find_one({"item_id": item_id})
+            if item:
+                item_details.append({
+                    "item_id": item.get("item_id"),
+                    "title": item.get("title"),
+                    "category": item.get("category"),
+                    "image": item.get("image"),
+                    "price": item.get("price")
+                })
+        
+        result.append({
+            "refund_id": str(request.get("_id")),
+            "order_id": request.get("order_id"),
+            "user_id": request.get("user_id"),
+            "refund_amount": request.get("refund_amount"),
+            "status": request.get("status"),
+            "items": item_details
+        })
+    
+    return result
+
 
 # -------------------------------
 # Approve/reject refund requests - SALES MANAGEEERRRRR
@@ -827,30 +893,4 @@ async def get_items_without_price(current_user: dict = Depends(get_current_user)
         })
     
     return {"items_with_no_price": items_with_detail}
-
-# -------------------------------
-# Display refund requests - SALES MANAGEEERRRRR
-# -------------------------------
-def serialize_mongo_document(doc):
-    """Convert ObjectId fields in a MongoDB document to strings."""
-    if "_id" in doc:
-        doc["_id"] = str(doc["_id"])
-    if "user_id" in doc and isinstance(doc["user_id"], ObjectId):
-        doc["user_id"] = str(doc["user_id"])
-    return doc
-
-@main_router.get("/refund-requests")
-async def view_refund_requests(current_user: dict = Depends(get_current_user)):
-    user = await users_collection.find_one({"user_id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    if not user.get("isSalesManager", False):
-        raise HTTPException(status_code=403, detail="Only sales managers can view refund requests.")
-    
-    requests = await refund_collection.find({"status": "pending"}).to_list(length=100)
-    
-    serialized_requests = [serialize_mongo_document(r) for r in requests]
-    return serialized_requests
-
 
