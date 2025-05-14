@@ -553,11 +553,18 @@ async def get_user_orders(current_user: dict = Depends(get_current_user)):
             status = "processing"  # Eğer herhangi bir ürün işlemde ise, sipariş işlemde
         elif "inTransit" in items_status:
             status = "inTransit"  # Eğer herhangi bir ürün kargoda ise ve işlemde olan yoksa, sipariş kargoda
-                
+
+        refund_request = await refund_collection.find_one({"order_id": order_id})
+        if refund_request:
+            refund_status = refund_request.get("status", "pending")
+        else:
+            refund_status = "notSent"
+
         result.append({
             "order_id": order_id,
             "date": order_date,
-            "status": status,  # Sipariş durumunu da ekle
+            "status": status,
+            "refund_status": refund_status,
             "item_ids": item_ids
         })
 
@@ -661,18 +668,19 @@ async def submit_refund_request(order_id: str, body: RefundRequestBody, current_
     
     item_ids = body.item_ids
 
-    purchase_date_str = order.get("date")
-    if not purchase_date_str:
-        raise HTTPException(status_code=400, detail="Purchase date not available for this order")
+    purchase_date = order.get("date")
+    if not isinstance(purchase_date, datetime):
+        raise HTTPException(status_code=400, detail="Invalid purchase date in database")
 
-    try:
-        purchase_date = datetime.fromisoformat(purchase_date_str)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid purchase date format")
+    # 🔧 purchase_date aware mı? değilse UTC olarak kabul et
+    if purchase_date.tzinfo is None:
+        purchase_date = purchase_date.replace(tzinfo=timezone.utc)
 
+    # ✅ Artık güvenli şekilde kıyas yapılabilir
     if datetime.now(timezone.utc) - purchase_date > timedelta(days=30):
         raise HTTPException(status_code=400, detail="Refund period has expired (more than 30 days since purchase)")
 
+    # Ürün kontrolü
     if any(item not in order.get("item_ids", []) for item in item_ids):
         raise HTTPException(status_code=400, detail="Some items do not belong to the order")
 
@@ -694,33 +702,6 @@ async def submit_refund_request(order_id: str, body: RefundRequestBody, current_
 
     await refund_collection.insert_one(request_doc)
     return {"message": "Refund request submitted and pending review."}
-
-
-# -------------------------------
-# Display refund requests - SALES MANAGEEERRRRR
-# -------------------------------
-def serialize_mongo_document(doc):
-    """Convert ObjectId fields in a MongoDB document to strings."""
-    if "_id" in doc:
-        doc["_id"] = str(doc["_id"])
-    if "user_id" in doc and isinstance(doc["user_id"], ObjectId):
-        doc["user_id"] = str(doc["user_id"])
-    return doc
-
-@main_router.get("/refund-requests")
-async def view_refund_requests(current_user: dict = Depends(get_current_user)):
-    user = await users_collection.find_one({"user_id": current_user["user_id"]})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    if not user.get("isSalesManager", False):
-        raise HTTPException(status_code=403, detail="Only sales managers can view refund requests.")
-    
-    requests = await refund_collection.find({"status": "pending"}).to_list(length=100)
-    
-    serialized_requests = [serialize_mongo_document(r) for r in requests]
-    return serialized_requests
-
 
 # -------------------------------
 # Approve/reject refund requests - SALES MANAGEEERRRRR
@@ -846,5 +827,30 @@ async def get_items_without_price(current_user: dict = Depends(get_current_user)
         })
     
     return {"items_with_no_price": items_with_detail}
+
+# -------------------------------
+# Display refund requests - SALES MANAGEEERRRRR
+# -------------------------------
+def serialize_mongo_document(doc):
+    """Convert ObjectId fields in a MongoDB document to strings."""
+    if "_id" in doc:
+        doc["_id"] = str(doc["_id"])
+    if "user_id" in doc and isinstance(doc["user_id"], ObjectId):
+        doc["user_id"] = str(doc["user_id"])
+    return doc
+
+@main_router.get("/refund-requests")
+async def view_refund_requests(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not user.get("isSalesManager", False):
+        raise HTTPException(status_code=403, detail="Only sales managers can view refund requests.")
+    
+    requests = await refund_collection.find({"status": "pending"}).to_list(length=100)
+    
+    serialized_requests = [serialize_mongo_document(r) for r in requests]
+    return serialized_requests
 
 

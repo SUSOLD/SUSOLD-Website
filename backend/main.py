@@ -49,6 +49,7 @@ app.openapi = custom_openapi
 
 app.add_middleware(
     CORSMiddleware,
+    
     allow_origins=["http://localhost:5173"],  # Use specific domains in production
     allow_credentials=True,
     allow_methods=["*"],

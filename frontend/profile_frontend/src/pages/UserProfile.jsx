@@ -12,7 +12,7 @@ import {
   cancelOrder,
   submitRefundRequest,
   getRefundRequests,
-  handleRefundRequest,
+  handleRefundAction,
   getItemsWithoutPrice,
   setProductPrice,
   getAllOrders,
@@ -224,38 +224,38 @@ const UserProfile = () => {
       <Star key={i} size={16} fill={i < rating ? '#FFD700' : 'none'} color={i < rating ? '#FFD700' : '#D1D5DB'} />
     ));
   };
-  // Satın alınan ürünleri getir
-  const fetchPurchasedProducts = async () => {
-    try {
-      setPurchasedItemsLoading(true);
-      const orders = await getPurchasedProducts();
+// Satın alınan ürünleri getir
+const fetchPurchasedProducts = async () => {
+  try {
+    setPurchasedItemsLoading(true);
+    const orders = await getPurchasedProducts();
+    
+    const orderMap = {};
+    
+    orders.forEach(order => {
+      let totalPrice = 0;
       
-      const orderMap = {};
-      
-      orders.forEach(order => {
-        let totalPrice = 0;
-        
-        // Siparişteki tüm ürünlerin toplam fiyatını hesapla
-        order.items.forEach(item => {
-          totalPrice += item.price || 0;
-        });
-        
-        orderMap[order.order_id] = {
-          items: order.items,
-          date: order.purchase_date,
-          status: order.status, // Backend'den gelen sipariş durumunu kullan
-          total_price: totalPrice
-        };
+      // Siparişteki tüm ürünlerin toplam fiyatını hesapla
+      order.items.forEach(item => {
+        totalPrice += item.price || 0;
       });
       
-      setOrderDetails(orderMap);
-    } catch (error) {
-      console.error('Error fetching purchased products:', error);
-    } finally {
-      setPurchasedItemsLoading(false);
-    }
-  };
-
+      orderMap[order.order_id] = {
+        items: order.items,
+        date: order.purchase_date,
+        status: order.status, // Backend'den gelen sipariş durumunu kullan
+        refund_status: order.refund_status, // Backend'den gelen refund durumunu kullan
+        total_price: totalPrice
+      };
+    });
+    
+    setOrderDetails(orderMap);
+  } catch (error) {
+    console.error('Error fetching purchased products:', error);
+  } finally {
+    setPurchasedItemsLoading(false);
+  }
+};
 // Sipariş iptali
 const handleCancelOrder = async (orderId) => {
   try {
@@ -315,7 +315,7 @@ const fetchRefundRequests = async () => {
 const processRefundRequest = async (orderId, action) => {
   try {
     setRefundRequestLoading(true);
-    await handleRefundRequest(orderId, action);
+    await handleRefundAction(orderId, action);
     
     // Yerel state'i güncelle
     setRefundRequests(prev => prev.filter(req => req.order_id !== orderId));
@@ -543,9 +543,14 @@ const handleSetPrice = async (itemId) => {
                           </button>
                         )}
                         
-                        {order.status === 'delivered' && !order.refundRequested && (
+                        {order.status === 'delivered' && order.refund_status === 'notSent' && (
                           <button
-                            onClick={() => handleRefundRequest(orderId, order.items.map(item => item.item_id))}
+                            onClick={() => {
+                              // item_id'leri doğru şekilde toplayalım
+                              const itemIds = order.items.map(item => item.item_id);
+                              console.log('Items to refund:', itemIds);
+                              handleRefundRequest(orderId, itemIds);
+                            }}
                             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                           >
                             <RefreshCw size={16} className="mr-1" />
@@ -553,9 +558,24 @@ const handleSetPrice = async (itemId) => {
                           </button>
                         )}
                         
-                        {order.refundRequested && (
+                        {order.refund_status === 'pending' && (
                           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                            <RefreshCw size={14} className="mr-1" />
                             Refund Requested
+                          </span>
+                        )}
+                        
+                        {order.refund_status === 'approved' && (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                            <Check size={14} className="mr-1" />
+                            Refund Approved
+                          </span>
+                        )}
+                        
+                        {order.refund_status === 'rejected' && (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                            <X size={14} className="mr-1" />
+                            Refund Rejected
                           </span>
                         )}
                       </div>
@@ -609,7 +629,7 @@ const handleSetPrice = async (itemId) => {
                       <button
                         onClick={() => processRefundRequest(request.order_id, 'approve')}
                         disabled={refundRequestLoading}
-                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                       >
                         <Check size={16} className="mr-1" />
                         Approve
@@ -617,7 +637,7 @@ const handleSetPrice = async (itemId) => {
                       <button
                         onClick={() => processRefundRequest(request.order_id, 'reject')}
                         disabled={refundRequestLoading}
-                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                       >
                         <X size={16} className="mr-1" />
                         Reject

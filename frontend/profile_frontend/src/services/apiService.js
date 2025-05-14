@@ -139,7 +139,6 @@ export const removeComment = async (feedbackId) => {
 // --- Yeni Eklenen API Fonksiyonları: Satın Alınan Ürünler ---
 
 // Kullanıcının satın aldığı ürünleri getir
-// Kullanıcının satın aldığı ürünleri getir
 export const getPurchasedProducts = async () => {
   try {
     // /user-orders endpoint'ini kullan
@@ -163,11 +162,12 @@ export const getPurchasedProducts = async () => {
           }
         }
         
-        // Backend'den gelen sipariş durumunu kullan
+        // Backend'den gelen sipariş durumunu ve refund durumunu kullan
         orderGroups.push({
           order_id: order.order_id,
           purchase_date: order.date,
-          status: order.status || 'processing', // Backend'den gelen status bilgisini kullan
+          status: order.status || 'processing',
+          refund_status: order.refund_status || 'notSent', // Yeni eklenen refund durum bilgisi
           items: orderItems
         });
         
@@ -182,6 +182,8 @@ export const getPurchasedProducts = async () => {
     return [];
   }
 };
+
+
 
 // Tüm siparişleri getir (Product Manager için)
 export const getAllOrders = async () => {
@@ -231,13 +233,12 @@ export const getRefundRequests = async () => {
   return res.data;
 };
 
-// İade talebini işle (onaylama/reddetme)
-export const handleRefundRequest = async (orderId, action) => {
+export const handleRefundAction = async (orderId, action) => {
   if (action !== 'approve' && action !== 'reject') {
     throw new Error('Invalid action. Must be "approve" or "reject"');
   }
   
-  return await api.post(`/handle-refund-request/${orderId}`, null, {
+  return await api.post(`/handle-refund-request/${orderId}`, {}, {
     params: { action }
   });
 };
