@@ -14,7 +14,7 @@ import PurchasePage from "./pages/PurchasePage";
 
 import './App.css';
 
-// Protected route component
+// Protected route wrapper
 const ProtectedRoute = ({ children }) => {
   const isLoggedIn = AuthService.isLoggedIn();
   if (!isLoggedIn) {
@@ -33,7 +33,8 @@ function App() {
     <Router>
       <div className="app">
         <Routes>
-          {/* Home page */}
+
+          {/* Home */}
           <Route 
             path="/" 
             element={
@@ -49,7 +50,7 @@ function App() {
             } 
           />
 
-          {/* Profile page (protected) */}
+          {/* User Profile */}
           <Route 
             path="/profile" 
             element={
@@ -58,18 +59,16 @@ function App() {
               </ProtectedRoute>
             } 
           />
-          
 
-          {/* Basket page */}
+          {/* Basket */}
           <Route 
             path="/basket" 
             element={
-              AuthService.isLoggedIn() ? <PurchasePage /> : <BasketPage />
+              isLoggedIn ? <PurchasePage /> : <BasketPage />
             } 
           />
 
-
-          {/* Add Product (protected) */}
+          {/* Add Product */}
           <Route 
             path="/add-product" 
             element={
@@ -79,22 +78,26 @@ function App() {
             } 
           />
 
-          {/* Edit Product (protected) */}
+          {/* 🛠️ Corrected route for edit page */}
           <Route 
-            path="/edit-product/:productId" 
+            path="/product/edit/:productId" 
             element={
               <ProtectedRoute>
                 <EditProduct />
               </ProtectedRoute>
             } 
           />
+         
 
-          {/* Login page */}
+          {/* Product Detail */}
+          <Route 
+            path="/item/:itemId" 
+            element={<ProductDetail />} 
+          />
+
+          {/* Login/Register */}
           <Route path="/login" element={<LoginForm />} />
-
-          {/* Register page */}
           <Route path="/register" element={<RegisterForm />} />
-          <Route path="/item/:itemId" element={<ProductDetail />} /> 
 
           {/* 404 */}
           <Route path="*" element={

@@ -60,31 +60,35 @@ const ProductDetail = () => {
   }, [itemId]);
   
 
+ 
   const handleAddToFavorites = async () => {
-    if (!isLoggedIn) {
-      alert('Please login to add favorites.');
-      navigate('/login');
-      return;
-    }
+  const token = localStorage.getItem('accessToken');
+  
+  if (!token) {
+    alert('Please login to add favorites.');
+    navigate('/login');
+    return;
+  }
 
-    try {
-      const response = await fetch(`http://127.0.0.1:8000/api/favorites/${itemId}`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        alert('Added to favorites!');
-      } else {
-        alert('Failed to add to favorites.');
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/api/favorites/${itemId}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
       }
-    } catch (error) {
-      console.error('Error adding to favorites:', error);
-      alert('Error adding to favorites.');
+    });
+
+    if (response.ok) {
+      alert('Added to favorites!');
+    } else {
+      const errorData = await response.json();
+      alert(`Failed to add to favorites. ${errorData.detail || ''}`);
     }
-  };
+  } catch (error) {
+    console.error('Error adding to favorites:', error);
+    alert('Error adding to favorites.');
+  }
+};
 
   const handleAddToBasket = async (itemId) => {
     const token = localStorage.getItem('accessToken');
@@ -238,3 +242,4 @@ const styles = {
 };
 
 export default ProductDetail;
+

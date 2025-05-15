@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const ProductList = ({ items, searchTerm, activeTab, activeCategory, isLoggedIn }) => {
+const ProductList = ({ items, searchTerm, activeTab, activeCategory, isLoggedIn, isManager }) => {
   const navigate = useNavigate();
 
   const filtered = items.filter((item) => {
@@ -18,6 +18,14 @@ const ProductList = ({ items, searchTerm, activeTab, activeCategory, isLoggedIn 
     return matchesSearch && matchesTab && matchesCategory;
   });
 
+  const handleCardClick = (itemId) => {
+    if (isManager) {
+      navigate(`/edit-product/${itemId}`);
+    } else {
+      navigate(`/item/${itemId}`);
+    }
+  };
+
   return (
     <section style={styles.products}>
       <h3>Products</h3>
@@ -26,7 +34,7 @@ const ProductList = ({ items, searchTerm, activeTab, activeCategory, isLoggedIn 
           <div
             key={item.item_id}
             style={styles.card}
-            onClick={() => navigate(`/item/${item.item_id}`)} 
+            onClick={() => handleCardClick(item.item_id)}
           >
             <img
               src={item.image}
@@ -35,12 +43,9 @@ const ProductList = ({ items, searchTerm, activeTab, activeCategory, isLoggedIn 
             />
             <p><b>{item.title}</b></p>
             <p>{item.condition} 👍</p>
-
-            {/* stock status gösterimi */}
             <p style={{ color: item.inStock ? 'green' : 'red', fontWeight: 'bold' }}>
               {item.inStock ? 'In Stock' : 'Out of Stock'}
             </p>
-
             <p>{item.price} TL</p>
           </div>
         ))}
