@@ -591,68 +591,84 @@ const handleSetPrice = async (itemId) => {
             </div>
           );
           
-        case 'refundRequests':
-          return (
-            <div className="grid grid-cols-1 gap-4">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-800">Refund Requests</h2>
-              </div>
-              
-              {refundRequestLoading ? (
-                <div className="text-center py-10">
-                  <RefreshCw size={40} className="text-blue-500 mx-auto mb-3 animate-spin" />
-                  <p className="text-gray-500">Loading refund requests...</p>
+          case 'refundRequests':
+            return (
+              <div className="grid grid-cols-1 gap-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-semibold text-gray-800">Refund Requests</h2>
                 </div>
-              ) : refundRequests.length > 0 ? (
-                refundRequests.map((request) => (
-                  <div key={request.order_id} className="bg-white rounded-lg shadow-md p-4">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900">Refund Request #{request.order_id.substring(0, 8)}</h3>
-                        <p className="text-sm text-gray-500 mt-1">User ID: {request.user_id}</p>
-                      </div>
-                      <p className="font-medium text-blue-600 mt-2 md:mt-0">
-                        Refund Amount: {request.refund_amount.toFixed(2)} ₺
-                      </p>
-                    </div>
-                    
-                    <div className="mb-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">Items:</h4>
-                      <ul className="pl-5 list-disc text-sm text-gray-600">
-                        {request.item_ids.map((itemId) => (
-                          <li key={itemId}>{itemId}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    
-                    <div className="flex justify-end space-x-3">
-                      <button
-                        onClick={() => processRefundRequest(request.order_id, 'approve')}
-                        disabled={refundRequestLoading}
-                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                      >
-                        <Check size={16} className="mr-1" />
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => processRefundRequest(request.order_id, 'reject')}
-                        disabled={refundRequestLoading}
-                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                      >
-                        <X size={16} className="mr-1" />
-                        Reject
-                      </button>
-                    </div>
+                
+                {refundRequestLoading ? (
+                  <div className="text-center py-10">
+                    <RefreshCw size={40} className="text-blue-500 mx-auto mb-3 animate-spin" />
+                    <p className="text-gray-500">Loading refund requests...</p>
                   </div>
-                ))
-              ) : (
-                <div className="col-span-full text-center py-8 bg-white rounded-lg shadow-sm">
-                  <AlertTriangle size={40} className="text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-500">No refund requests pending.</p>
-                </div>
-              )}
-            </div>
-          );
+                ) : refundRequests.length > 0 ? (
+                  refundRequests.map((request) => (
+                    <div key={request.refund_id} className="bg-white rounded-lg shadow-md p-4">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900">Refund Request #{request.order_id.substring(0, 8)}</h3>
+                          <p className="text-sm text-gray-500 mt-1">User ID: {request.user_id}</p>
+                        </div>
+                        <p className="font-medium text-blue-600 mt-2 md:mt-0">
+                          Refund Amount: {request.refund_amount.toFixed(2)} ₺
+                        </p>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Items:</h4>
+                        <div className="space-y-4">
+                          {request.items.map((item) => (
+                            <div key={item.item_id} className="flex items-center p-2 bg-gray-50 rounded-md">
+                              <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 mr-4">
+                                {item.image ? (
+                                  <img src={item.image} alt={item.title} className="h-full w-full object-cover object-center" />
+                                ) : (
+                                  <div className="flex items-center justify-center h-full w-full bg-gray-100 text-gray-400">
+                                    <Package size={24} />
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div className="flex flex-col flex-1">
+                                <h5 className="text-sm font-medium text-gray-900">{item.title}</h5>
+                                <p className="text-xs text-gray-500">{item.category}</p>
+                                <p className="text-sm font-medium text-gray-700 mt-1">{item.price} ₺</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          onClick={() => processRefundRequest(request.order_id, 'approve')}
+                          disabled={refundRequestLoading}
+                          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                        >
+                          <Check size={16} className="mr-1" />
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => processRefundRequest(request.order_id, 'reject')}
+                          disabled={refundRequestLoading}
+                          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        >
+                          <X size={16} className="mr-1" />
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-8 bg-white rounded-lg shadow-sm">
+                    <AlertTriangle size={40} className="text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-500">No refund requests pending.</p>
+                  </div>
+                )}
+              </div>
+            );
           case 'manageOrders':
             return (
               <div className="grid grid-cols-1 gap-6">
