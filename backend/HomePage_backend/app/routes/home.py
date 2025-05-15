@@ -1,12 +1,38 @@
 from bson import ObjectId
 from fastapi import APIRouter, Query, HTTPException, Depends
 from typing import Optional
-from backend.database import item_collection, users_collection
+from backend.database import item_collection, users_collection, order_collection
 from backend.HomePage_backend.app.schemas import ProductCreate, ProductUpdate
-from datetime import datetime, time
+from datetime import datetime, timezone
 from backend.registerloginbackend.jwt_handler import get_current_user
+import smtplib
+from email.mime.text import MIMEText
+from email.message import EmailMessage
 
 router = APIRouter()
+
+# ------------------------- sneding discount email -------------------------
+async def send_discount_email(to_email: str, product_title: str, old_price: float, discounted_price: float):
+    sender_email = "susold78@gmail.com"
+    sender_password = "eoiz jtje lhyv lhsn"
+
+    msg = EmailMessage()
+    msg.set_content(
+        f"The product '{product_title}' in your wishlist has a new discount!\n\n"
+        f"Old Price: {old_price} TL\n"
+        f"New Price: {discounted_price} TL\n\n"
+        f"Visit SUSOLD to purchase it before the discount ends!"
+    )
+    msg["Subject"] = "SUSOLD Discount Alert"
+    msg["From"] = sender_email
+    msg["To"] = to_email
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(sender_email, sender_password)
+            smtp.send_message(msg)
+    except Exception as e:
+        print("Failed to send discount email:", e)
 
 # ------------------------- GET: List Products -------------------------
 @router.get("/home/")
@@ -75,6 +101,8 @@ async def get_home_data(
     if item_id:
         query["item_id"] = item_id
 
+    query["price"] = {"$gt": 0}
+
     sort_order = []
     if sort_by == "price_asc":
         sort_order.append(("price", 1))
@@ -124,6 +152,8 @@ async def add_product(product: ProductCreate, current_user: dict = Depends(get_c
     product_dict["image"] = str(product_dict.get("image"))
     product_dict["user_id"] = current_user["user_id"]
 
+    product_dict["price"] = 0
+
     if not product_dict.get("isSold"):
         product_dict["isSold"] = "stillInStock"
 
@@ -155,6 +185,12 @@ async def update_product(item_id: str, update_data: ProductUpdate, current_user:
     if "image" in update_fields:
         update_fields["image"] = str(update_fields["image"])
 
+    if "price" in update_fields and not current_user.get("isSalesManager", False):
+        raise HTTPException(status_code=403, detail="Only sales managers can update price.")
+
+    if "isSold" in update_fields and not current_user.get("isManager", False):
+        raise HTTPException(status_code=403, detail="Only product managers can update delivery status.")
+
     await item_collection.update_one(
         {"item_id": item_id},
         {"$set": update_fields}
@@ -175,10 +211,90 @@ async def delete_product(item_id: str, current_user: dict = Depends(get_current_
 
     await item_collection.delete_one({"item_id": item_id})
 
-    # Also remove from user's offeredProducts
     await users_collection.update_one(
         {"user_id": current_user["user_id"]},
         {"$pull": {"offeredProducts": item_id}}
     )
 
-    return {"message": "Product deleted successfully"}
+    await users_collection.update_many(
+        {"basket": item_id},
+        {"$pull": {"basket": item_id}}
+    )
+
+    return {"message": "Product deleted successfully and removed from all baskets"}
+
+
+
+
+#------discount method ---------
+
+@router.post("/home/set-discount/{item_id}")
+async def set_discount(item_id: str, discount_rate: float = Query(...), current_user: dict = Depends(get_current_user)):
+    if not current_user.get("isSalesManager", False):
+        raise HTTPException(status_code=403, detail="Only sales managers can set discounts.")
+
+    product = await item_collection.find_one({"item_id": item_id})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    old_price = product.get("price", 0)
+    if old_price <= 0:
+        raise HTTPException(status_code=400, detail="Cannot apply discount to product with price 0")
+
+    discounted_price = round(old_price * (1 - discount_rate), 2)
+
+    await item_collection.update_one(
+        {"item_id": item_id},
+        {"$set": {"discount_rate": discount_rate, "discounted_price": discounted_price}}
+    )
+
+    users_cursor = users_collection.find({"favorites": item_id})
+    async for user in users_cursor:
+        await send_discount_email(user["email"], product["title"], old_price, discounted_price)
+
+    return {"message": f"Discount applied. New price: {discounted_price} TL"}
+
+
+#------ sales summary method -------
+
+@router.get("/home/sales-summary")
+async def sales_summary(
+    start_date: str = Query(...),
+    end_date: str = Query(...),
+    current_user: dict = Depends(get_current_user)
+):
+    if not current_user.get("isSalesManager", False):
+        raise HTTPException(status_code=403, detail="Only sales managers can view sales summary.")
+
+    try:
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+
+    orders = await order_collection.find({
+        "date": {"$gte": start_dt, "$lte": end_dt}
+    }).to_list(None)
+
+    total_revenue = 0
+    total_cost = 0
+
+    for order in orders:
+        total_revenue += order.get("total_price", 0)
+        for item_id in order.get("item_ids", []):
+            item = await item_collection.find_one({"item_id": item_id})
+            if item:
+                sale_price = item.get("price", 0)
+                cost = item.get("cost", sale_price * 0.5)  # fallback to 50% if no cost field
+                total_cost += cost
+
+    total_profit = total_revenue - total_cost
+
+    return {
+        "start_date": start_date,
+        "end_date": end_date,
+        "total_revenue": round(total_revenue, 2),
+        "total_cost": round(total_cost, 2),
+        "total_profit": round(total_profit, 2)
+    }
+

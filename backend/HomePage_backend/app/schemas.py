@@ -31,6 +31,9 @@ class ProductCreate(BaseModel):
     image: Optional[str] = None
     item_id: ItemID
     user_id: Optional[str] = None
+    discount_rate: Optional[float] = 0.0
+    discounted_price: Optional[float] = None
+    cost: Optional[float] = None
 
 class ProductUpdate(BaseModel):
     title: Optional[str] = None
@@ -50,3 +53,6 @@ class ProductUpdate(BaseModel):
     isSold: Optional[IsSoldStatus] = None  
     returnable: Optional[bool] = None
     image: Optional[str] = None
+    discount_rate: Optional[float] = None
+    discounted_price: Optional[float] = None
+    cost: Optional[float] = None
