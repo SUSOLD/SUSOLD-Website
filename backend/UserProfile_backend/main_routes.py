@@ -792,6 +792,8 @@ async def handle_refund(order_id: str, action: str = Query(...), current_user: d
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    item_list = ', '.join(request['item_ids'])
+
     if action == "approve":
         for item_id in request["item_ids"]:
             await item_collection.update_one(
@@ -803,14 +805,17 @@ async def handle_refund(order_id: str, action: str = Query(...), current_user: d
             {"$set": {"status": "approved"}}
         )
 
-        # Send email
-        subject = "Your refund request has been approved"
+        subject = "✅ Your refund request has been approved"
         body = (
-            f"Hello {user['name']},\n\n"
-            f"Your refund request for Order ID {order_id} has been approved.\n"
-            f"Refunded amount: {request['refund_amount']} TL\n"
-            f"Items: {', '.join(request['item_ids'])}\n\n"
-            "Thank you for using suSold."
+            f"Dear {user['name']},\n\n"
+            f"We're happy to let you know that your refund request has been **approved**.\n\n"
+            f"📦 **Order ID:** {order_id}\n"
+            f"💸 **Refunded Amount:** {request['refund_amount']} TL\n"
+            f"🛍️ **Items Refunded:** {item_list}\n\n"
+            "The items will now be marked as available for other users to purchase.\n\n"
+            "Thank you for using suSold!\n"
+            "Best regards,\n"
+            "suSold Support Team"
         )
         await send_email_notification(user["email"], subject, body)
 
@@ -822,12 +827,16 @@ async def handle_refund(order_id: str, action: str = Query(...), current_user: d
             {"$set": {"status": "rejected"}}
         )
 
-        subject = "Your refund request has been rejected"
+        subject = "❌ Your refund request has been rejected"
         body = (
-            f"Hello {user['name']},\n\n"
-            f"Your refund request for Order ID {order_id} has been rejected.\n"
-            "Please contact support for more information.\n\n"
-            "Thank you."
+            f"Dear {user['name']},\n\n"
+            f"Unfortunately, your refund request has been **rejected**.\n\n"
+            f"📦 **Order ID:** {order_id}\n"
+            f"🛍️ **Items Requested:** {item_list}\n\n"
+            "If you have any questions or need assistance, please contact our support team.\n\n"
+            "Thank you for understanding.\n"
+            "Best regards,\n"
+            "suSold Support Team"
         )
         await send_email_notification(user["email"], subject, body)
 
@@ -835,6 +844,7 @@ async def handle_refund(order_id: str, action: str = Query(...), current_user: d
     
     else:
         raise HTTPException(status_code=400, detail="Action must be 'approve' or 'reject'.")
+
 
 
 # -------------------------------
