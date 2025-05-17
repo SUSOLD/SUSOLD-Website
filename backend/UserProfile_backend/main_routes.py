@@ -395,7 +395,7 @@ async def remove_from_favorites(product_id: str, current_user: dict = Depends(ge
 
 
 # -------------------------------
-# Display all purchased products 
+# Display all purchased products of the current user
 # -------------------------------
 @main_router.get("/purchased-products")
 async def get_purchased_products(current_user: dict = Depends(get_current_user)):
@@ -451,7 +451,7 @@ async def get_user_orders(current_user: dict = Depends(get_current_user)):
         elif "inTransit" in items_status:
             status = "inTransit"  # Eğer herhangi bir ürün kargoda ise ve işlemde olan yoksa, sipariş kargoda
 
-        refund_request = await refund_collection.find_one({"order_id": order_id})
+        refund_request = await refund_collection.find_one({"user_id": current_user["user_id"], "order_id": order_id})
         if refund_request:
             refund_status = refund_request.get("status", "pending")
         else:
@@ -538,6 +538,14 @@ async def submit_refund_request(order_id: str, body: RefundRequestBody, current_
     # Ürün kontrolü
     if any(item not in order.get("item_ids", []) for item in item_ids):
         raise HTTPException(status_code=400, detail="Some items do not belong to the order")
+
+    existing_refund = await refund_collection.find_one({
+        "user_id": current_user["user_id"],
+        "order_id": order_id,
+        "item_ids": {"$in": item_ids},
+    })
+    if existing_refund:
+        raise HTTPException(status_code=400, detail="A refund request has already been submitted for one or more of these items in this order.")
 
     total_price = 0
     for item_id in item_ids:
