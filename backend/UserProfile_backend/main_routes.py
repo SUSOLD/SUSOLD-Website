@@ -539,14 +539,6 @@ async def submit_refund_request(order_id: str, body: RefundRequestBody, current_
     if any(item not in order.get("item_ids", []) for item in item_ids):
         raise HTTPException(status_code=400, detail="Some items do not belong to the order")
 
-    existing_refund = await refund_collection.find_one({
-        "user_id": current_user["user_id"],
-        "order_id": order_id,
-        "item_ids": {"$in": item_ids},
-    })
-    if existing_refund:
-        raise HTTPException(status_code=400, detail="A refund request has already been submitted for one or more of these items in this order.")
-
     total_price = 0
     for item_id in item_ids:
         product = await item_collection.find_one({"item_id": item_id})
