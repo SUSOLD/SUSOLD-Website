@@ -398,8 +398,6 @@ async def create_category(category: CategoryModel, current_user: dict = Depends(
     if existing:
         raise HTTPException(status_code=400, detail="Category already exists.")
 
-    category_data = category.dict()
-    category_data["created_at"] = datetime.utcnow()
-    await category_collection.insert_one(category_data)
+    await category_collection.insert_one({"name": category.name})
 
     return {"message": f"Category '{category.name}' created successfully."}

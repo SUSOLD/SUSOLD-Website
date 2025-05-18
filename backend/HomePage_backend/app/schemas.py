@@ -61,4 +61,3 @@ class ProductUpdate(BaseModel):
 
 class CategoryModel(BaseModel):
     name: str = Field(..., min_length=2, max_length=30)
-    created_by: str  
