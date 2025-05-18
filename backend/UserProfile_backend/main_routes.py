@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
-from pydantic import HttpUrl
+from pydantic import HttpUrl, Field
+from typing import Annotated
 from bson import ObjectId
 from datetime import datetime, timezone, timedelta
 from backend.database import users_collection, feedback_collection, item_collection, order_collection, refund_collection
@@ -7,6 +8,7 @@ from backend.registerloginbackend.jwt_handler import get_current_user, get_passw
 from backend.UserProfile_backend.model import FeedbackInput, UserUpdate, RefundRequestBody
 from backend.HomePage_backend.app.schemas import ProductCreate as Product
 import smtplib
+import random
 from email.message import EmailMessage
 
 async def send_email_notification(to_email: str, subject: str, body: str):
@@ -27,6 +29,13 @@ async def send_email_notification(to_email: str, subject: str, body: str):
     except Exception as e:
         print("Email sending failed:", e)
 
+async def generate_unique_item_id():
+    while True:
+        item_id = "item" + str(random.randint(10000, 99999))
+        existing_user = await item_collection.find_one({"item_id": item_id})
+        if not existing_user:
+            return item_id
+        
 main_router = APIRouter()
 
 
@@ -562,6 +571,58 @@ async def submit_refund_request(order_id: str, body: RefundRequestBody, current_
 # ---------------------------------------------------------------------------------------------
 #                                    PRODUCT MANAGER METHODS
 # ---------------------------------------------------------------------------------------------
+
+
+# -------------------------------
+# Changing the stock of an item - PRODUCT MANAGEERRR -
+# -------------------------------
+@main_router.patch("/change-stock-status")
+async def change_stock_status(item_id: str, in_stock: bool, current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not user.get("isManager", False):
+        raise HTTPException(status_code=403, detail="Only product managers are allowed to update product status.")
+
+    item = await item_collection.find_one({"item_id": item_id})
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    # Case 1: If turning inStock from True to False, mark as outOfStock and remove from users' baskets
+    if not in_stock:
+        await item_collection.update_one(
+            {"item_id": item_id},
+            {"$set": {"inStock": False, "isSold": "outOfStock"}}
+        )
+
+        # Remove item from each user's basket individually if the basket exists
+        async for user_doc in users_collection.find({"basket": {"$exists": True}}):
+            if item_id in user_doc.get("basket", []):
+                await users_collection.update_one(
+                    {"user_id": user_doc["user_id"]},
+                    {"$pull": {"basket": item_id}}
+                )
+
+        return {"message": "Item marked as out of stock and removed from baskets"}
+
+    # Case 2: If turning from outOfStock to stillInStock (restocking)
+    # Create a new item with same details but different item_id and manager as the seller
+    new_item = item.copy()
+    new_item.pop("_id", None)
+    new_item["item_id"] = await generate_unique_item_id()
+    new_item["user_id"] = current_user["user_id"]
+    new_item["inStock"] = True
+    new_item["isSold"] = "stillInStock"
+
+    await item_collection.insert_one(new_item)
+
+    await users_collection.update_one(
+        {"user_id": current_user["user_id"]},
+        {"$push": {"offeredProducts": new_item["item_id"]}}
+    )
+
+    return {"message": "Item duplicated and restocked", "new_item_id": new_item["item_id"]}
 
 
 # -------------------------------
