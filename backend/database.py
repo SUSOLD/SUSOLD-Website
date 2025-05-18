@@ -11,3 +11,4 @@ order_collection = db.orders # order yapmistik
 cart_collection = db.shopping_cart # cart 
 item_collection = db.items
 refund_collection = db.refund_requests
+category_collection = db.category_collection

@@ -3,10 +3,10 @@ from tkinter import Canvas
 from bson import ObjectId
 from fastapi import APIRouter, Query, HTTPException, Depends
 from typing import Optional
-from database import item_collection, users_collection, order_collection
-from HomePage_backend.app.schemas import ProductCreate, ProductUpdate, CategoryModel
+from backend.database import item_collection, users_collection, order_collection, category_collection
+from backend.HomePage_backend.app.schemas import ProductCreate, ProductUpdate, CategoryModel
 from datetime import datetime, time, timezone
-from registerloginbackend.jwt_handler import get_current_user
+from backend.registerloginbackend.jwt_handler import get_current_user
 import smtplib
 from email.mime.text import MIMEText
 from email.message import EmailMessage
