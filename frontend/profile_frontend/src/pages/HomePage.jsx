@@ -202,6 +202,7 @@ const HomePage = ({
         categories={categories}
         isManager={isManager}
         onAddCategory={addNewCategory}
+        refreshItems={fetchItems} // Pass the fetchItems function for refreshing after adding a product
       />
       <MainCarousel />
       <TabMenu activeTab={activeTab} setActiveTab={setActiveTab} />

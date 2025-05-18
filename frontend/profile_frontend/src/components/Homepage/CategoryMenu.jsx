@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { addProduct } from '../../services/apiService'; // Make sure this path is correct
+import { v4 as uuidv4 } from 'uuid'; // You'll need to install this package
 
 const CategoryMenu = ({ 
   activeCategory, 
@@ -6,10 +8,29 @@ const CategoryMenu = ({
   openSortFilter,
   categories,
   isManager,
-  onAddCategory 
+  onAddCategory,
+  refreshItems
 }) => {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  
+  // New state for Add Product modal
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  
+  // Product form state
+  const [productForm, setProductForm] = useState({
+    title: '',
+    description: '',
+    condition: 'New',
+    image: null,
+    item_id: uuidv4()
+  });
+  
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const handleAddCategory = () => {
     if (newCategoryName.trim() && newCategoryName.length >= 2) {
@@ -18,24 +39,144 @@ const CategoryMenu = ({
       setShowAddCategory(false);
     }
   };
+  
+  // Handle opening the Add Product modal
+  const handleAddProductClick = (category) => {
+    setSelectedCategory(category);
+    setProductForm({
+      ...productForm,
+      category: category,
+      item_id: uuidv4() // Generate a new ID
+    });
+    setSubmitError('');
+    setSubmitSuccess(false);
+    setImagePreview(null);
+    setShowAddProduct(true);
+  };
+  
+  // Handle product form changes
+  const handleProductFormChange = (e) => {
+    const { name, value } = e.target;
+    setProductForm({
+      ...productForm,
+      [name]: value
+    });
+  };
+  
+  // Handle image upload
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setProductForm({
+        ...productForm,
+        image: file
+      });
+      
+      // Create image preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  // Handle adding product
+  const handleAddProduct = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitError('');
+    
+    try {
+      // Send product to API (price will default to 0 in backend)
+      await addProduct({
+        ...productForm,
+        category: selectedCategory
+      });
+      
+      setSubmitSuccess(true);
+      
+      // Close modal after 2 seconds and refresh items
+      setTimeout(() => {
+        setShowAddProduct(false);
+        if (refreshItems) refreshItems();
+      }, 2000);
+    } catch (error) {
+      console.error("Error adding product:", error);
+      setSubmitError(error.response?.data?.detail || 'Failed to add product');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Array of condition options for dropdown
+  const conditionOptions = [
+    'New',
+    'Like New',
+    'Very Good',
+    'Good',
+    'Acceptable',
+    'Poor'
+  ];
 
   return (
     <nav style={styles.menu}>
       {categories.map((category, index) => (
-        <span
-          key={index}
-          onClick={() => setActiveCategory(category)}
+        <div 
+          key={index} 
           style={{
-            ...styles.item,
-            color: activeCategory === category ? 'white' : 'black',
-            backgroundColor: activeCategory === category ? 'black' : 'transparent',
-            padding: '4px 10px',
-            borderRadius: 8,
-            cursor: 'pointer'
+            position: 'relative',
+            display: 'inline-block'
           }}
         >
-          {category}
-        </span>
+          <span
+            onClick={() => setActiveCategory(category)}
+            style={{
+              ...styles.item,
+              color: activeCategory === category ? 'white' : 'black',
+              backgroundColor: activeCategory === category ? 'black' : 'transparent',
+              padding: '4px 10px',
+              borderRadius: 8,
+              cursor: 'pointer'
+            }}
+          >
+            {category}
+          </span>
+          
+          {/* Add Product button (only for managers and non-All categories) */}
+          {isManager && category !== 'All' && (
+            <button 
+              style={{
+                position: 'absolute',
+                top: -8,
+                right: -8,
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                cursor: 'pointer',
+                zIndex: 5,
+                opacity: 0,
+                transition: 'opacity 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseOut={(e) => e.currentTarget.style.opacity = '0'}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent category selection
+                handleAddProductClick(category);
+              }}
+              title={`Add product to ${category}`}
+            >
+              +
+            </button>
+          )}
+        </div>
       ))}
       
       {isManager && (
@@ -84,6 +225,139 @@ const CategoryMenu = ({
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Add Product Modal */}
+      {showAddProduct && (
+        <div style={styles.modalOverlay}>
+          <div style={{...styles.modal, width: '450px', maxWidth: '90vw'}}>
+            <h3 style={{marginTop: 0}}>Add Product to {selectedCategory}</h3>
+            
+            {submitSuccess ? (
+              <div style={styles.successContainer}>
+                <div style={styles.successIcon}>✓</div>
+                <p style={styles.successText}>Product added successfully!</p>
+                <p style={{fontSize: '14px', color: '#666'}}>
+                  Your product has been added and is awaiting price assignment from a Sales Manager.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleAddProduct}>
+                {submitError && (
+                  <div style={styles.errorMessage}>
+                    {submitError}
+                  </div>
+                )}
+                
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Product Title*</label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={productForm.title}
+                    onChange={handleProductFormChange}
+                    style={styles.input}
+                    required
+                  />
+                </div>
+                
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Description*</label>
+                  <textarea
+                    name="description"
+                    value={productForm.description}
+                    onChange={handleProductFormChange}
+                    style={{...styles.input, minHeight: '80px', resize: 'vertical'}}
+                    required
+                  />
+                </div>
+                
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Condition*</label>
+                  <select
+                    name="condition"
+                    value={productForm.condition}
+                    onChange={handleProductFormChange}
+                    style={styles.input}
+                    required
+                  >
+                    {conditionOptions.map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Category</label>
+                  <input
+                    type="text"
+                    value={selectedCategory}
+                    style={{...styles.input, backgroundColor: '#f0f0f0'}}
+                    disabled
+                  />
+                </div>
+                
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Product Image</label>
+                  {imagePreview ? (
+                    <div style={styles.imagePreviewContainer}>
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        style={styles.imagePreview} 
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImagePreview(null);
+                          setProductForm({...productForm, image: null});
+                        }}
+                        style={styles.removeImageButton}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={styles.imageUploadContainer}>
+                      <input
+                        type="file"
+                        id="productImage"
+                        onChange={handleImageChange}
+                        style={styles.fileInput}
+                        accept="image/*"
+                      />
+                      <label htmlFor="productImage" style={styles.fileInputLabel}>
+                        Choose Image
+                      </label>
+                    </div>
+                  )}
+                </div>
+                
+                <div style={styles.buttonContainer}>
+                  <button
+                    type="submit"
+                    style={{
+                      ...styles.buttonPrimary, 
+                      backgroundColor: '#007bff',
+                      opacity: isSubmitting ? 0.7 : 1
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Adding...' : 'Add Product'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddProduct(false)}
+                    style={styles.buttonSecondary}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
@@ -179,6 +453,93 @@ const styles = {
     cursor: 'pointer',
     flex: 1,
     fontSize: '14px'
+  },
+  // New styles for Add Product modal
+  formGroup: {
+    marginBottom: '15px',
+  },
+  label: {
+    display: 'block',
+    marginBottom: '5px',
+    fontSize: '14px',
+    fontWeight: 'bold',
+  },
+  errorMessage: {
+    backgroundColor: '#f8d7da',
+    color: '#721c24',
+    padding: '10px',
+    borderRadius: '5px',
+    marginBottom: '15px',
+    fontSize: '14px',
+  },
+  successContainer: {
+    textAlign: 'center',
+    padding: '20px 0',
+  },
+  successIcon: {
+    display: 'inline-flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '50px',
+    height: '50px',
+    borderRadius: '50%',
+    backgroundColor: '#28a745',
+    color: 'white',
+    fontSize: '24px',
+    marginBottom: '15px',
+  },
+  successText: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    margin: '10px 0',
+  },
+  imageUploadContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '2px dashed #ccc',
+    borderRadius: '8px',
+    padding: '20px',
+    cursor: 'pointer',
+  },
+  fileInput: {
+    display: 'none',
+  },
+  fileInputLabel: {
+    backgroundColor: '#f8f9fa',
+    color: '#495057',
+    padding: '8px 16px',
+    borderRadius: '4px',
+    border: '1px solid #ced4da',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  imagePreviewContainer: {
+    position: 'relative',
+    display: 'inline-block',
+  },
+  imagePreview: {
+    maxWidth: '100%',
+    maxHeight: '200px',
+    borderRadius: '4px',
+    border: '1px solid #ddd',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: '-10px',
+    right: '-10px',
+    backgroundColor: '#dc3545',
+    color: 'white',
+    border: 'none',
+    width: '24px',
+    height: '24px',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '16px',
+    cursor: 'pointer',
   }
 };
 
