@@ -16,9 +16,11 @@ async def get_basket(current_user: dict = Depends(get_current_user)):
     item_ids = user.get("basket", [])
     items = []
     for item_id in item_ids:
-        item = await item_collection.find_one({"item_id": item_id})
+        item = await item_collection.find_one(
+            {"item_id": item_id},
+            {"_id": 0, "item_id": 1, "title": 1, "price": 1, "isSold": 1}
+        )
         if item:
-            item["_id"] = str(item["_id"])
             items.append(item)
 
     return {"basket": items}

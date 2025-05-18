@@ -1,13 +1,17 @@
+from io import BytesIO
+from tkinter import Canvas
 from bson import ObjectId
 from fastapi import APIRouter, Query, HTTPException, Depends
 from typing import Optional
 from backend.database import item_collection, users_collection, order_collection
 from backend.HomePage_backend.app.schemas import ProductCreate, ProductUpdate
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
 from backend.registerloginbackend.jwt_handler import get_current_user
 import smtplib
 from email.mime.text import MIMEText
 from email.message import EmailMessage
+from fastapi.responses import StreamingResponse
+
 
 router = APIRouter()
 
@@ -199,29 +203,34 @@ async def update_product(item_id: str, update_data: ProductUpdate, current_user:
     return {"message": "Product updated successfully"}
 
 
-# ------------------------- DELETE: Delete Product (LOGIN REQUIRED) -------------------------
+# ------------------------- Delete Product (owner or product manager) -------------------------
 @router.delete("/home/{item_id}")
 async def delete_product(item_id: str, current_user: dict = Depends(get_current_user)):
     existing_item = await item_collection.find_one({"item_id": item_id})
     if not existing_item:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    if existing_item.get("user_id") != current_user["user_id"]:
+    is_owner = existing_item.get("user_id") == current_user["user_id"]
+    is_manager = current_user.get("isManager", False)
+
+    if not is_owner and not is_manager:
         raise HTTPException(status_code=403, detail="Not authorized to delete this product")
 
     await item_collection.delete_one({"item_id": item_id})
 
-    await users_collection.update_one(
-        {"user_id": current_user["user_id"]},
-        {"$pull": {"offeredProducts": item_id}}
-    )
-
     await users_collection.update_many(
-        {"basket": item_id},
-        {"$pull": {"basket": item_id}}
+        {},  # all users
+        {
+            "$pull": {
+                "offeredProducts": item_id,
+                "basket": item_id,
+                "favorites": item_id
+            }
+        }
     )
 
-    return {"message": "Product deleted successfully and removed from all baskets"}
+    return {"message": "Product deleted successfully and removed from all user data"}
+
 
 
 
@@ -298,3 +307,82 @@ async def sales_summary(
         "total_profit": round(total_profit, 2)
     }
 
+#-----view the invoices in data range----
+@router.get("/home/invoices")
+async def get_invoices_by_date(
+    start_date: str,
+    end_date: str,
+    current_user: dict = Depends(get_current_user)
+):
+    if not current_user.get("isSalesManager", False):
+        raise HTTPException(status_code=403, detail="Only sales managers can view invoices.")
+
+    from datetime import datetime, timezone
+
+    try:
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+
+    orders = await order_collection.find({
+        "date": {"$gte": start_dt, "$lte": end_dt}
+    }).to_list(None)
+
+    results = []
+    for order in orders:
+        results.append({
+            "order_id": order["order_id"],
+            "user_id": order["user_id"],
+            "date": order["date"],
+            "total_price": order["total_price"],
+            "number_of_items": order["number_of_items"]
+        })
+
+    return {"invoices": results}
+
+
+#----saving and printing invoiced pdf's---------
+@router.get("/home/invoice-pdf/{order_id}")
+async def download_invoice_pdf(order_id: str, current_user: dict = Depends(get_current_user)):
+    order = await order_collection.find_one({"order_id": order_id})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found.")
+
+    # Only sales manager or order owner can access
+    if current_user["user_id"] != order["user_id"] and not current_user.get("isSalesManager", False):
+        raise HTTPException(status_code=403, detail="Not authorized to download this invoice.")
+
+    # Get item details
+    item_ids = order.get("item_ids", [])
+    item_docs = await item_collection.find({"item_id": {"$in": item_ids}}).to_list(length=None)
+    item_names = [item["title"] for item in item_docs]
+
+    # Build message
+    message = (
+        f"Invoice for Order ID: {order['order_id']}\n\n"
+        f"User ID: {order['user_id']}\n"
+        f"Date: {order['date']}\n\n"
+        f"Purchased Items:\n- " + "\n- ".join(item_names) + "\n\n"
+        f"Shipping Address: {order['shipping_address']}\n"
+        f"Payment Info: {order['payment_info']}\n\n"
+        f"Total Price: {order['total_price']}\n"
+        f"Number of Items: {order['number_of_items']}\n"
+    )
+
+    # Generate PDF in memory
+    pdf_buffer = BytesIO()
+    p = Canvas.Canvas(pdf_buffer)
+    text_object = p.beginText(40, 800)
+    for line in message.split("\n"):
+        text_object.textLine(line)
+    p.drawText(text_object)
+    p.showPage()
+    p.save()
+    pdf_buffer.seek(0)
+
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=invoice_{order_id}.pdf"}
+    )
