@@ -658,7 +658,7 @@ async def update_product_status(item_id: str, status: str, current_user: dict = 
     if not user.get("isManager", False):
         raise HTTPException(status_code=403, detail="Only product managers are allowed to update product status.")
 
-    valid_statuses = {"processing", "stillInStock", "inTransit", "delivered"}
+    valid_statuses = {"processing", "stillInStock", "inTransit", "delivered", "outOfStock"}
     if status not in valid_statuses:
         raise HTTPException(
             status_code=400,
@@ -669,7 +669,7 @@ async def update_product_status(item_id: str, status: str, current_user: dict = 
     if not product:
         raise HTTPException(status_code=404, detail="Product not found.")
     
-    if status in {"processing", "inTransit", "delivered"}:
+    if status in {"processing", "inTransit", "delivered", "outOfStock"}:
         await item_collection.update_one(
             {"item_id": item_id},
             {"$set": {"isSold": status, "inStock": False}}
