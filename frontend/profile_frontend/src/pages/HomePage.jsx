@@ -161,6 +161,37 @@ const HomePage = ({
     );
   }
 
+  const styles = {
+    modal: {
+      position: 'fixed',
+      top: '20%',
+      left: '30%',
+      backgroundColor: 'white',
+      padding: '20px',
+      border: '2px solid black',
+      borderRadius: '10px',
+      zIndex: 999,
+    },
+    input: {
+      width: '100%',
+      padding: '10px',
+      marginBottom: '12px',
+      borderRadius: '8px',
+      border: '1px solid black',
+      color: 'black',
+      backgroundColor: 'white',
+    },
+    button: {
+      marginRight: '10px',
+      padding: '10px 20px',
+      border: 'none',
+      borderRadius: '8px',
+      backgroundColor: '#007bff',
+      color: 'white',
+      cursor: 'pointer'
+    }
+  };
+
   return (
     <div>
       <Navbar setSearchTerm={setSearchTerm} />
@@ -181,6 +212,54 @@ const HomePage = ({
         activeCategory={activeCategory}
         isLoggedIn={isLoggedIn}
       />
+
+      {showSortFilter && (
+        <div style={styles.modal}>
+          <h3>Sort & Filter</h3>
+          <select 
+            value={sortBy} 
+            onChange={e => setSortBy(e.target.value)}
+            style={styles.input}
+          >
+            <option value="">Sort By</option>
+            <option value="price_asc">Price Low to High</option>
+            <option value="price_desc">Price High to Low</option>
+            <option value="popularity">Condition Quality (Best First)</option> 
+            <option value="newest">Newest</option>
+          </select>
+
+          <input
+            type="number"
+            placeholder="Min Price"
+            value={minPrice}
+            onChange={e => setMinPrice(e.target.value)}
+            style={styles.input}
+          />
+          <input
+            type="number"
+            placeholder="Max Price"
+            value={maxPrice}
+            onChange={e => setMaxPrice(e.target.value)}
+            style={styles.input}
+          />
+          <input
+            type="text"
+            placeholder="Description keyword"
+            value={descriptionFilter}
+            onChange={e => setDescriptionFilter(e.target.value)}
+            style={styles.input}
+          />
+
+          <div style={{ marginTop: '10px' }}>
+            <button onClick={() => { fetchItems(); setShowSortFilter(false); }} style={styles.button}>
+              Apply
+            </button>
+            <button onClick={() => setShowSortFilter(false)} style={styles.button}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
