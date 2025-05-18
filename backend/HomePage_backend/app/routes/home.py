@@ -3,10 +3,10 @@ from tkinter import Canvas
 from bson import ObjectId
 from fastapi import APIRouter, Query, HTTPException, Depends
 from typing import Optional
-from backend.database import item_collection, users_collection, order_collection
-from backend.HomePage_backend.app.schemas import ProductCreate, ProductUpdate
+from database import item_collection, users_collection, order_collection
+from HomePage_backend.app.schemas import ProductCreate, ProductUpdate, CategoryModel
 from datetime import datetime, time, timezone
-from backend.registerloginbackend.jwt_handler import get_current_user
+from registerloginbackend.jwt_handler import get_current_user
 import smtplib
 from email.mime.text import MIMEText
 from email.message import EmailMessage
@@ -386,3 +386,20 @@ async def download_invoice_pdf(order_id: str, current_user: dict = Depends(get_c
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=invoice_{order_id}.pdf"}
     )
+
+
+#----creating new category---
+@router.post("/categories")
+async def create_category(category: CategoryModel, current_user: dict = Depends(get_current_user)):
+    if not current_user.get("isManager", False):
+        raise HTTPException(status_code=403, detail="Only product managers can create categories.")
+
+    existing = await category_collection.find_one({"name": category.name})
+    if existing:
+        raise HTTPException(status_code=400, detail="Category already exists.")
+
+    category_data = category.dict()
+    category_data["created_at"] = datetime.utcnow()
+    await category_collection.insert_one(category_data)
+
+    return {"message": f"Category '{category.name}' created successfully."}

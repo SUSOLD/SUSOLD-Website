@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, Annotated
 from enum import Enum 
+from datetime import datetime
 
 ItemID = Annotated[str, Field(pattern=r'^item\d{5}$')]
 ShortDescription = Annotated[str, Field(max_length=200)]
@@ -56,3 +57,8 @@ class ProductUpdate(BaseModel):
     discount_rate: Optional[float] = None
     discounted_price: Optional[float] = None
     cost: Optional[float] = None
+
+
+class CategoryModel(BaseModel):
+    name: str = Field(..., min_length=2, max_length=30)
+    created_by: str  
