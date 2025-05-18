@@ -5,6 +5,9 @@ import MainCarousel from '../components/Homepage/MainCarousel';
 import TabMenu from '../components/Homepage/TabMenu';
 import ProductList from '../components/Homepage/ProductList';
 
+const token = localStorage.getItem('accessToken');
+const tokenType = localStorage.getItem('tokenType');
+const authHeader = token && tokenType ? { Authorization: `${tokenType} ${token}` } : {};
 
 const HomePage = ({
   searchTerm,
@@ -22,14 +25,71 @@ const HomePage = ({
   const [maxPrice, setMaxPrice] = useState('');
   const [descriptionFilter, setDescriptionFilter] = useState('');
   const [showSortFilter, setShowSortFilter] = useState(false);
+  const [categories, setCategories] = useState(['All']);
+  const [isManager, setIsManager] = useState(false);
 
-const conditionPriority = {
+  const conditionPriority = {
     "New": 4,
     "Like New": 3,
     "Very Good": 2,
     "Excellent": 5,
     "Poor": 1
-    };
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/categories');
+      const data = await response.json();
+      if (data.categories) {
+        const allCategories = ['All', ...data.categories.filter(cat => cat !== 'All')];
+        setCategories(allCategories);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const checkIfManager = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/is_manager', {
+        headers: authHeader
+      });
+      const data = await response.json();
+      setIsManager(data.is_manager);
+    } catch (error) {
+      console.error('Error checking manager status:', error);
+    }
+  };
+
+  const addNewCategory = async (categoryName) => {
+    try {
+      if (!token) {
+        alert('You need to be logged in to add categories');
+        return;
+      }
+
+      const response = await fetch('http://127.0.0.1:8000/api/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader
+        },
+        body: JSON.stringify({ name: categoryName })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(data.message);
+        fetchCategories();
+      } else {
+        const errorData = await response.json();
+        alert(errorData.detail || 'Failed to add category');
+      }
+    } catch (error) {
+      console.error('Error adding category:', error);
+      alert('Error adding category');
+    }
+  };
 
   const fetchItems = () => {
     let url = 'http://127.0.0.1:8000/api/home/?';
@@ -42,13 +102,13 @@ const conditionPriority = {
     fetch(url)
       .then(response => response.json())
       .then(data => {
-       let fetchedItems = data.featured_products || [];
+        let fetchedItems = data.featured_products || [];
 
-       if (sortBy === "popularity") {
-         fetchedItems.sort((a, b) => 
-           (conditionPriority[b.condition] || 0) - (conditionPriority[a.condition] || 0)
-         );
-       }
+        if (sortBy === "popularity") {
+          fetchedItems.sort((a, b) => 
+            (conditionPriority[b.condition] || 0) - (conditionPriority[a.condition] || 0)
+          );
+        }
 
         setItems(fetchedItems);
       })
@@ -57,16 +117,22 @@ const conditionPriority = {
 
   useEffect(() => {
     fetchItems();
-  }, [sortBy]); // 👉 Important: Watch sortBy change to refetch/sort properly
+  }, [sortBy]);
+
+  useEffect(() => {
+    fetchCategories();
+    if (isLoggedIn) {
+      checkIfManager();
+    }
+  }, [isLoggedIn]);
 
   useEffect(() => {
     const fetchFavorites = async () => {
       try {
-        const token = localStorage.getItem('token');
         if (!token) return;
 
         const res = await fetch('http://127.0.0.1:8000/api/my_favorites', {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: authHeader
         });
         const data = await res.json();
         if (data.favorites) {
@@ -83,7 +149,6 @@ const conditionPriority = {
     }
   }, [isLoggedIn]);
 
-  // Filter Logic
   let filteredItems = items.filter(item =>
     item.title.toLowerCase().includes(searchTerm.toLowerCase())
   ).filter(item =>
@@ -103,6 +168,9 @@ const conditionPriority = {
         activeCategory={activeCategory}
         setActiveCategory={setActiveCategory}
         openSortFilter={() => setShowSortFilter(true)}
+        categories={categories}
+        isManager={isManager}
+        onAddCategory={addNewCategory}
       />
       <MainCarousel />
       <TabMenu activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -113,122 +181,8 @@ const conditionPriority = {
         activeCategory={activeCategory}
         isLoggedIn={isLoggedIn}
       />
-
-      {showSortFilter && (
-        <div style={styles.modal}>
-          <h3>Sort & Filter</h3>
-          <select 
-            value={sortBy} 
-            onChange={e => setSortBy(e.target.value)}
-            style={styles.input}
-          >
-            <option value="">Sort By</option>
-            <option value="price_asc">Price Low to High</option>
-            <option value="price_desc">Price High to Low</option>
-            <option value="popularity">Condition Quality (Best First)</option> 
-            <option value="newest">Newest</option>
-          </select>
-
-          <input
-            type="number"
-            placeholder="Min Price"
-            value={minPrice}
-            onChange={e => setMinPrice(e.target.value)}
-            style={styles.input}
-          />
-          <input
-            type="number"
-            placeholder="Max Price"
-            value={maxPrice}
-            onChange={e => setMaxPrice(e.target.value)}
-            style={styles.input}
-          />
-          <input
-            type="text"
-            placeholder="Description keyword"
-            value={descriptionFilter}
-            onChange={e => setDescriptionFilter(e.target.value)}
-            style={styles.input}
-          />
-
-          <div style={{ marginTop: '10px' }}>
-            <button onClick={() => { fetchItems(); setShowSortFilter(false); }} style={styles.button}>
-              Apply
-            </button>
-            <button onClick={() => setShowSortFilter(false)} style={styles.button}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
-
-
-
-const styles = {
-  modalOverlay: {
-    position: 'fixed',
-    top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 999,
-  },
-  modal: {
-    position: 'fixed',    
-    top: '20%',          
-    left: '30%',          
-    backgroundColor: 'white',
-    padding: '20px',
-    border: '2px solid black',
-    borderRadius: '10px',
-    zIndex: 999,
-  },
-  input: {
-    width: '100%',
-    padding: '10px',
-    marginBottom: '12px',
-    borderRadius: '8px',
-    border: '1px solid black',
-    color: 'black',
-    backgroundColor: 'white',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: '10px',
-    right: '15px',
-    backgroundColor: 'transparent',
-    border: 'none',
-    fontSize: '18px',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-  },
-  buttonContainer: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    marginTop: '10px',
-  },
-  buttonPrimary: {
-    backgroundColor: '#28a745',
-    color: 'white',
-    padding: '10px 20px',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer'
-  },
-  buttonSecondary: {
-    backgroundColor: '#dc3545',
-    color: 'white',
-    padding: '10px 20px',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer'
-  }
-};
-
-
 
 export default HomePage;

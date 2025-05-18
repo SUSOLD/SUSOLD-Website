@@ -1,7 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-const CategoryMenu = ({ activeCategory, setActiveCategory, openSortFilter }) => {
-  const categories = ['All', 'Books', 'Clothing', 'Electronics', 'Furniture', 'Sports', 'Others'];
+const CategoryMenu = ({ 
+  activeCategory, 
+  setActiveCategory, 
+  openSortFilter,
+  categories,
+  isManager,
+  onAddCategory 
+}) => {
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
+  const handleAddCategory = () => {
+    if (newCategoryName.trim() && newCategoryName.length >= 2) {
+      onAddCategory(newCategoryName.trim());
+      setNewCategoryName('');
+      setShowAddCategory(false);
+    }
+  };
 
   return (
     <nav style={styles.menu}>
@@ -21,9 +37,56 @@ const CategoryMenu = ({ activeCategory, setActiveCategory, openSortFilter }) => 
           {category}
         </span>
       ))}
+      
+      {isManager && (
+        <span
+          onClick={() => setShowAddCategory(true)}
+          style={styles.addButton}
+          title="Add new category"
+        >
+          +
+        </span>
+      )}
+
       <button onClick={openSortFilter} style={styles.sortButton}>
         Sort & Filter
       </button>
+
+      {/* Add Category Modal */}
+      {showAddCategory && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modal}>
+            <h3>Add New Category</h3>
+            <input
+              type="text"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="Category name (2-30 characters)"
+              style={styles.input}
+              maxLength={30}
+              autoFocus
+            />
+            <div style={styles.buttonContainer}>
+              <button 
+                onClick={handleAddCategory} 
+                style={styles.buttonPrimary}
+                disabled={newCategoryName.trim().length < 2}
+              >
+                Add
+              </button>
+              <button 
+                onClick={() => {
+                  setShowAddCategory(false);
+                  setNewCategoryName('');
+                }} 
+                style={styles.buttonSecondary}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };
@@ -32,11 +95,28 @@ const styles = {
   menu: {
     display: 'flex',
     justifyContent: 'center',
+    alignItems: 'center',
     gap: 20,
     marginTop: 10
   },
   item: {
     fontWeight: 'bold'
+  },
+  addButton: {
+    fontWeight: 'bold',
+    color: 'white',
+    backgroundColor: '#28a745',
+    padding: '4px 12px',
+    borderRadius: '50%',
+    cursor: 'pointer',
+    fontSize: '18px',
+    minWidth: '30px',
+    minHeight: '30px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '2px solid #28a745',
+    transition: 'all 0.2s'
   },
   sortButton: {
     backgroundColor: '#f0f0f0',
@@ -45,6 +125,60 @@ const styles = {
     borderRadius: '8px',
     cursor: 'pointer',
     border: '1px solid black'
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000
+  },
+  modal: {
+    backgroundColor: 'white',
+    padding: '20px',
+    border: '2px solid black',
+    borderRadius: '10px',
+    minWidth: '300px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+  },
+  input: {
+    width: '100%',
+    padding: '10px',
+    marginBottom: '15px',
+    borderRadius: '8px',
+    border: '1px solid #ccc',
+    fontSize: '14px',
+    boxSizing: 'border-box'
+  },
+  buttonContainer: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '10px'
+  },
+  buttonPrimary: {
+    backgroundColor: '#28a745',
+    color: 'white',
+    padding: '10px 20px',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    flex: 1,
+    fontSize: '14px'
+  },
+  buttonSecondary: {
+    backgroundColor: '#dc3545',
+    color: 'white',
+    padding: '10px 20px',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    flex: 1,
+    fontSize: '14px'
   }
 };
 

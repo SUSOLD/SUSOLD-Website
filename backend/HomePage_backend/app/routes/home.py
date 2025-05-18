@@ -401,3 +401,9 @@ async def create_category(category: CategoryModel, current_user: dict = Depends(
     await category_collection.insert_one({"name": category.name})
 
     return {"message": f"Category '{category.name}' created successfully."}
+
+@router.get("/categories")
+async def get_all_categories():
+    categories_cursor = category_collection.find({})
+    categories = await categories_cursor.to_list(length=None)
+    return {"categories": [c["name"] for c in categories]}
