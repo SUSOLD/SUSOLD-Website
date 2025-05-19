@@ -21,6 +21,38 @@ from reportlab.pdfgen import canvas
 router = APIRouter()
 
 
+# For production, load from a secure config or env variable
+from cryptography.fernet import Fernet
+SECRET_KEY = Fernet.generate_key()  # Temporary for dev
+fernet = Fernet(SECRET_KEY)
+
+class NewEntry(BaseModel):
+    value: str
+
+@router.post("/add-credit-card")
+async def add_credit_card(entry: NewEntry, current_user: dict = Depends(get_current_user)):
+    encrypted = fernet.encrypt(entry.value.encode()).decode()
+    result = await users_collection.update_one(
+        {"user_id": current_user["user_id"]},
+        {"$push": {"credit_cards": encrypted}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found or card not added.")
+    return {"message": "Credit card added successfully"}
+
+@router.post("/add-address")
+async def add_address(entry: NewEntry, current_user: dict = Depends(get_current_user)):
+    result = await users_collection.update_one(
+        {"user_id": current_user["user_id"]},
+        {"$push": {"addresses": entry.value}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found or address not added.")
+    return {"message": "Address added successfully"}
+
+
+
+
 # Response Models
 class CartItemResponse(BaseModel):
     item_names: list[str]
@@ -63,10 +95,25 @@ async def get_cart_items(current_user: dict = Depends(get_current_user)):
 
 @router.get("/user-dropdown-data", response_model=UserDropdownData)
 async def get_user_dropdown_data(current_user: dict = Depends(get_current_user)):
-    ## Find the data to be shown in the dropdown menus (i.e. the credit cards and addresses of the current user)
+    from database import users_collection  # import here if not already at the top
+
+    # Find the full user document from the DB
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Decrypt and mask the credit cards
+    decrypted_cards = []
+    for enc in user.get("credit_cards", []):
+        try:
+            plain = fernet.decrypt(enc.encode()).decode()
+            decrypted_cards.append(f"**** **** **** {plain[-4:]}")
+        except Exception:
+            decrypted_cards.append("Invalid Card")
+
     return {
-        "credit_cards": current_user.get("credit_cards", []),
-        "addresses": current_user.get("addresses", [])
+        "credit_cards": decrypted_cards,
+        "addresses": user.get("addresses", [])
     }
 
 @router.post("/complete-order")
