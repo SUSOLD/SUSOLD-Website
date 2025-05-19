@@ -763,6 +763,7 @@ async def get_all_orders(current_user: dict = Depends(get_current_user)):
             "order_id": order.get("order_id"),
             "user_id": order.get("user_id"),
             "date": order.get("date"),
+            "shipping_address": order.get("shipping_address", "No address provided"),
             "items": []
         }
         

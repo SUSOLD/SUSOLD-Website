@@ -669,176 +669,108 @@ const handleSetPrice = async (itemId) => {
                 )}
               </div>
             );
-          case 'manageOrders':
-            return (
-              <div className="grid grid-cols-1 gap-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold text-gray-800">Manage Orders</h2>
-                </div>
-                
-                {orderLoading ? (
-                  <div className="text-center py-10">
-                    <RefreshCw size={40} className="text-blue-500 mx-auto mb-3 animate-spin" />
-                    <p className="text-gray-500">Loading orders...</p>
+            case 'manageOrders':
+              return (
+                <div className="grid grid-cols-1 gap-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold text-gray-800">Manage Orders</h2>
                   </div>
-                ) : allOrders.length > 0 ? (
-                  allOrders.map((order) => (
-                    <div key={order.order_id} className="bg-white rounded-lg shadow-md overflow-hidden">
-                      <div className="border-b border-gray-200 bg-gray-50 px-6 py-4">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                          <div>
-                            <h3 className="text-lg font-medium text-gray-900">Order #{order.order_id.substring(0, 8)}</h3>
-                            <p className="text-sm text-gray-500 mt-1">
-                              User ID: {order.user_id}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              Placed on {new Date(order.date).toLocaleDateString()}
-                            </p>
+                  
+                  {orderLoading ? (
+                    <div className="text-center py-10">
+                      <RefreshCw size={40} className="text-blue-500 mx-auto mb-3 animate-spin" />
+                      <p className="text-gray-500">Loading orders...</p>
+                    </div>
+                  ) : allOrders.length > 0 ? (
+                    allOrders.map((order) => (
+                      <div key={order.order_id} className="bg-white rounded-lg shadow-md overflow-hidden">
+                        <div className="border-b border-gray-200 bg-gray-50 px-6 py-4">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                            <div>
+                              <h3 className="text-lg font-medium text-gray-900">Order #{order.order_id.substring(0, 8)}</h3>
+                              <p className="text-sm text-gray-500 mt-1">
+                                User ID: {order.user_id}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                Placed on {new Date(order.date).toLocaleDateString()}
+                              </p>
+                              {/* Shipping Address bilgisini gösteriyoruz */}
+                              <div className="mt-2 p-2 bg-blue-50 rounded-md border border-blue-100">
+                                <p className="text-sm font-medium text-gray-800">Shipping Address:</p>
+                                <p className="text-sm text-gray-600">{order.shipping_address || "No address provided"}</p>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      
-                      <div className="px-6 py-4">
-                        <ul className="divide-y divide-gray-200">
-                          {order.items.map((item) => (
-                            <li key={item.item_id} className="py-4 flex flex-col md:flex-row md:items-center">
-                              <div className="flex-1 flex">
-                                <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
-                                  {item.image ? (
-                                    <img src={item.image} alt={item.title} className="h-full w-full object-cover object-center" />
-                                  ) : (
-                                    <div className="flex items-center justify-center h-full w-full bg-gray-100 text-gray-400">
-                                      <Package size={24} />
+                        
+                        <div className="px-6 py-4">
+                          <ul className="divide-y divide-gray-200">
+                            {order.items.map((item) => (
+                              <li key={item.item_id} className="py-4 flex flex-col md:flex-row md:items-center">
+                                <div className="flex-1 flex">
+                                  <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
+                                    {item.image ? (
+                                      <img src={item.image} alt={item.title} className="h-full w-full object-cover object-center" />
+                                    ) : (
+                                      <div className="flex items-center justify-center h-full w-full bg-gray-100 text-gray-400">
+                                        <Package size={24} />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="ml-4 flex flex-1 flex-col">
+                                    <div>
+                                      <div className="flex justify-between text-base font-medium text-gray-900">
+                                        <h3>{item.title}</h3>
+                                        <p className="ml-4">{item.price} ₺</p>
+                                      </div>
+                                      <p className="mt-1 text-sm text-gray-500">ID: {item.item_id}</p>
+                                      <p className="mt-1 text-sm text-gray-500">Category: {item.category}</p>
                                     </div>
-                                  )}
-                                </div>
-                                <div className="ml-4 flex flex-1 flex-col">
-                                  <div>
-                                    <div className="flex justify-between text-base font-medium text-gray-900">
-                                      <h3>{item.title}</h3>
-                                      <p className="ml-4">{item.price} ₺</p>
-                                    </div>
-                                    <p className="mt-1 text-sm text-gray-500">ID: {item.item_id}</p>
-                                    <p className="mt-1 text-sm text-gray-500">Category: {item.category}</p>
                                   </div>
                                 </div>
-                              </div>
-                              
-                              <div className="mt-4 md:mt-0 md:ml-6 flex items-center space-x-2">
-                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
-                                  ${item.status === 'processing' ? 'bg-blue-100 text-blue-800' : 
-                                    item.status === 'inTransit' ? 'bg-yellow-100 text-yellow-800' : 
-                                    item.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                                    'bg-gray-100 text-gray-800'}`}
-                                >
-                                  {item.status === 'processing' ? <RefreshCw size={14} className="mr-1" /> : 
-                                    item.status === 'inTransit' ? <Truck size={14} className="mr-1" /> : 
-                                    item.status === 'delivered' ? <Check size={14} className="mr-1" /> :
-                                    <Package size={14} className="mr-1" />}
-                                  {item.status === 'processing' ? 'Processing' : 
-                                    item.status === 'inTransit' ? 'In Transit' : 
-                                    item.status === 'delivered' ? 'Delivered' :
-                                    item.status === 'stillInStock' ? 'In Stock' : 'Unknown'}
-                                </span>
                                 
-                                <select 
-                                  defaultValue={item.status || 'processing'}
-                                  onChange={(e) => handleStatusUpdate(item.item_id, e.target.value)}
-                                  className="border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                >
-                                  <option value="processing">Processing</option>
-                                  <option value="stillInStock">In Stock</option>
-                                  <option value="inTransit">In Transit</option>
-                                  <option value="delivered">Delivered</option>
-                                </select>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
+                                <div className="mt-4 md:mt-0 md:ml-6 flex items-center space-x-2">
+                                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                                    ${item.status === 'processing' ? 'bg-blue-100 text-blue-800' : 
+                                      item.status === 'inTransit' ? 'bg-yellow-100 text-yellow-800' : 
+                                      item.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                                      'bg-gray-100 text-gray-800'}`}
+                                  >
+                                    {item.status === 'processing' ? <RefreshCw size={14} className="mr-1" /> : 
+                                      item.status === 'inTransit' ? <Truck size={14} className="mr-1" /> : 
+                                      item.status === 'delivered' ? <Check size={14} className="mr-1" /> :
+                                      <Package size={14} className="mr-1" />}
+                                    {item.status === 'processing' ? 'Processing' : 
+                                      item.status === 'inTransit' ? 'In Transit' : 
+                                      item.status === 'delivered' ? 'Delivered' :
+                                      item.status === 'stillInStock' ? 'In Stock' : 'Unknown'}
+                                  </span>
+                                  
+                                  <select 
+                                    defaultValue={item.status || 'processing'}
+                                    onChange={(e) => handleStatusUpdate(item.item_id, e.target.value)}
+                                    className="border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                  >
+                                    <option value="processing">Processing</option>
+                                    <option value="stillInStock">In Stock</option>
+                                    <option value="inTransit">In Transit</option>
+                                    <option value="delivered">Delivered</option>
+                                  </select>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-8 bg-white rounded-lg shadow-sm">
+                      <Package size={40} className="text-gray-400 mx-auto mb-3" />
+                      <p className="text-gray-500">No orders found.</p>
                     </div>
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-8 bg-white rounded-lg shadow-sm">
-                    <Package size={40} className="text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-500">No orders found.</p>
-                  </div>
-                )}
-              </div>
-            );
-          
-          case 'setPrices':
-            return (
-              <div className="grid grid-cols-1 gap-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold text-gray-800">Set Product Prices</h2>
+                  )}
                 </div>
-                
-                {priceLoading ? (
-                  <div className="text-center py-10">
-                    <RefreshCw size={40} className="text-blue-500 mx-auto mb-3 animate-spin" />
-                    <p className="text-gray-500">Loading products...</p>
-                  </div>
-                ) : itemsWithoutPrice.length > 0 ? (
-                  itemsWithoutPrice.map((item) => (
-                    <div key={item.item_id} className="bg-white rounded-lg shadow-md p-4">
-                      <div className="flex flex-col md:flex-row">
-                        {/* Ürün resmi */}
-                        <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 mr-4">
-                          {item.image ? (
-                            <img src={item.image} alt={item.title} className="h-full w-full object-cover object-center" />
-                          ) : (
-                            <div className="flex items-center justify-center h-full w-full bg-gray-100 text-gray-400">
-                              <Package size={24} />
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Ürün bilgileri */}
-                        <div className="flex-1">
-                          <div className="mb-2">
-                            <h3 className="font-medium text-gray-900">{item.title || 'Ürün Adı'}</h3>
-                            <p className="text-sm text-gray-500">ID: {item.item_id}</p>
-                            <p className="text-sm text-gray-600 mt-1">Category: {item.category || 'Belirtilmemiş'}</p>
-                            <p className="text-sm text-gray-600">Condition: {item.condition || 'Belirtilmemiş'}</p>
-                            <p className="text-sm text-gray-600">Description: {item.description ? (item.description.length > 100 ? item.description.substring(0, 100) + '...' : item.description) : 'Açıklama yok'}</p>
-                          </div>
-                        </div>
-                        
-                        {/* Fiyat giriş alanı */}
-                        <div className="flex flex-col md:items-end space-y-2 mt-3 md:mt-0">
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="Enter price"
-                              value={newPrice[item.item_id] || ''}
-                              onChange={(e) => setNewPrice({...newPrice, [item.item_id]: e.target.value})}
-                              className="border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm w-32"
-                            />
-                            <span className="text-gray-700 font-medium">₺</span>
-                          </div>
-                          <button
-                            onClick={() => handleSetPrice(item.item_id)}
-                            disabled={priceLoading}
-                            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                          >
-                            <Check size={16} className="mr-1" />
-                            Set Price
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-8 bg-white rounded-lg shadow-sm">
-                    <Package size={40} className="text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-500">No products without prices.</p>
-                  </div>
-                )}
-              </div>
-            );
+              );
       case 'unapprovedComments':
         return (
           <div className="grid grid-cols-1 gap-4">
