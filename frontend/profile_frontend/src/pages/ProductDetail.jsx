@@ -71,7 +71,8 @@ const ProductDetail = () => {
       const response = await fetch(`http://127.0.0.1:8000/api/favorites/${itemId}`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `${localStorage.getItem('tokenType')} ${localStorage.getItem('accessToken')}`
+
         }
       });
 
