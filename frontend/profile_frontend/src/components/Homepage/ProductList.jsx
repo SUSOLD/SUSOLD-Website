@@ -5,13 +5,17 @@ const ProductList = ({ items, searchTerm, activeTab, activeCategory, isLoggedIn 
   const navigate = useNavigate();
 
   const filtered = items.filter((item) => {
-    const matchesSearch = searchTerm ? item.title.toLowerCase().includes(searchTerm.toLowerCase()) : true;
+    const matchesSearch = searchTerm
+      ? item.title.toLowerCase().includes(searchTerm.toLowerCase())
+      : true;
+
     const matchesTab =
       activeTab === 'Favorites'
         ? item.isFavorite
         : activeTab === 'Verified Sellers'
         ? item.verified
         : true;
+
     const matchesCategory =
       activeCategory === 'All' ? true : item.category === activeCategory;
 
@@ -22,11 +26,17 @@ const ProductList = ({ items, searchTerm, activeTab, activeCategory, isLoggedIn 
     <section style={styles.products}>
       <h3>Products</h3>
       <div style={styles.productGrid}>
+        {filtered.length === 0 && (
+          <p style={{ color: 'gray', marginTop: 10 }}>
+            No products found in this tab.
+          </p>
+        )}
+
         {filtered.map((item) => (
           <div
             key={item.item_id}
             style={styles.card}
-            onClick={() => navigate(`/item/${item.item_id}`)} 
+            onClick={() => navigate(`/item/${item.item_id}`)}
           >
             <img
               src={item.image}
@@ -35,13 +45,14 @@ const ProductList = ({ items, searchTerm, activeTab, activeCategory, isLoggedIn 
             />
             <p><b>{item.title}</b></p>
             <p>{item.condition} 👍</p>
-
-            {/* stock status gösterimi */}
             <p style={{ color: item.inStock ? 'green' : 'red', fontWeight: 'bold' }}>
               {item.inStock ? 'In Stock' : 'Out of Stock'}
             </p>
-
             <p>{item.price} TL</p>
+
+            {item.isFavorite && (
+              <p style={{ color: 'red', fontWeight: 'bold' }}>💖 Favorited</p>
+            )}
           </div>
         ))}
       </div>
