@@ -158,22 +158,16 @@ export const getPurchasedProducts = async () => {
         for (const itemId of order.item_ids) {
           const product = await getProductById(itemId);
           if (product) {
-            orderItems.push({
-              ...product,
-              item_id: itemId  // item_id'yi ayrıca ekleyelim
-            });
+            orderItems.push(product);
           }
         }
         
-        // Backend'den gelen tüm sipariş bilgilerini kullanarak array'e ekle
+        // Backend'den gelen sipariş durumunu ve refund durumunu kullan
         orderGroups.push({
           order_id: order.order_id,
           purchase_date: order.date,
           status: order.status || 'processing',
-          refund_status: order.refund_status || 'notSent',
-          shipping_address: order.shipping_address || 'No address provided',
-          number_of_items: order.number_of_items || orderItems.length,
-          user_id: order.user_id,
+          refund_status: order.refund_status || 'notSent', // Yeni eklenen refund durum bilgisi
           items: orderItems
         });
         
@@ -288,10 +282,14 @@ export const itemAPI = {
 
 // --- FAVORITES ---
 export const favoritesAPI = {
-  getFavorites: () => api.get('/favorites'),
-  toggleFavorite: (itemId) => api.post(`/favorites/${itemId}`),
-  removeFavorite: (itemId) => api.delete(`/favorites/${itemId}`),
+  getFavorites: async () => {
+    const res = await api.get('/favorites');
+    return res.data; 
+  }
 };
+
+
+
 
 // --- BASKET ---
 export const basketAPI = {
@@ -299,6 +297,7 @@ export const basketAPI = {
   toggleBasketItem: (itemId) => api.post(`/basket/${itemId}`),
   removeBasketItem: (itemId) => api.delete(`/basket/${itemId}`),
 };
+
 // Add an item to localStorage basket
 export const addToBasketLocal = (itemId) => {
   let basket = JSON.parse(localStorage.getItem('basket')) || [];
