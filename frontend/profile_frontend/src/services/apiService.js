@@ -158,16 +158,22 @@ export const getPurchasedProducts = async () => {
         for (const itemId of order.item_ids) {
           const product = await getProductById(itemId);
           if (product) {
-            orderItems.push(product);
+            orderItems.push({
+              ...product,
+              item_id: itemId  // item_id'yi ayrıca ekleyelim
+            });
           }
         }
         
-        // Backend'den gelen sipariş durumunu ve refund durumunu kullan
+        // Backend'den gelen tüm sipariş bilgilerini kullanarak array'e ekle
         orderGroups.push({
           order_id: order.order_id,
           purchase_date: order.date,
           status: order.status || 'processing',
-          refund_status: order.refund_status || 'notSent', // Yeni eklenen refund durum bilgisi
+          refund_status: order.refund_status || 'notSent',
+          shipping_address: order.shipping_address || 'No address provided',
+          number_of_items: order.number_of_items || orderItems.length,
+          user_id: order.user_id,
           items: orderItems
         });
         

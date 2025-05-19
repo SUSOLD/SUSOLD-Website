@@ -471,7 +471,10 @@ async def get_user_orders(current_user: dict = Depends(get_current_user)):
             "date": order_date,
             "status": status,
             "refund_status": refund_status,
-            "item_ids": item_ids
+            "item_ids": item_ids,
+            "shipping_address": order.get("shipping_address", "No address provided"),  # Kargo adresi eklendi
+            "number_of_items": len(item_ids),  # Siparişteki ürün sayısı eklendi
+            "user_id": current_user["user_id"]  # Kullanıcı ID'si eklendi
         })
 
     return result
