@@ -4,6 +4,8 @@ import CategoryMenu from '../components/Homepage/CategoryMenu';
 import MainCarousel from '../components/Homepage/MainCarousel';
 import TabMenu from '../components/Homepage/TabMenu';
 import ProductList from '../components/Homepage/ProductList';
+import { favoritesAPI } from '../services/apiService';
+
 
 const token = localStorage.getItem('accessToken');
 const tokenType = localStorage.getItem('tokenType');
@@ -91,7 +93,7 @@ const HomePage = ({
     }
   };
 
-  const fetchItems = () => {
+  const fetchItems = async () => {
     let url = 'http://127.0.0.1:8000/api/home/?';
 
     if (sortBy && sortBy !== "popularity") url += `sort_by=${sortBy}&`;
@@ -99,20 +101,27 @@ const HomePage = ({
     if (maxPrice) url += `max_price=${maxPrice}&`;
     if (descriptionFilter) url += `description=${descriptionFilter}&`;
 
-    fetch(url)
-      .then(response => response.json())
-      .then(data => {
-        let fetchedItems = data.featured_products || [];
+    try {
+      const response = await fetch(url, { headers: authHeader });
+      const data = await response.json();
+      let fetchedItems = data.featured_products || [];
 
-        if (sortBy === "popularity") {
-          fetchedItems.sort((a, b) => 
-            (conditionPriority[b.condition] || 0) - (conditionPriority[a.condition] || 0)
-          );
-        }
+      // ✅ Mark isFavorite based on user's favoriteIds
+      fetchedItems = fetchedItems.map(item => ({
+        ...item,
+        isFavorite: favoriteIds.includes(item.item_id)
+      }));
 
-        setItems(fetchedItems);
-      })
-      .catch(error => console.error('Error fetching products:', error));
+      if (sortBy === "popularity") {
+        fetchedItems.sort((a, b) =>
+          (conditionPriority[b.condition] || 0) - (conditionPriority[a.condition] || 0)
+        );
+      }
+
+      setItems(fetchedItems);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
   };
 
   useEffect(() => {
@@ -131,14 +140,9 @@ const HomePage = ({
       try {
         if (!token) return;
 
-        const res = await fetch('http://127.0.0.1:8000/api/my_favorites', {
-          headers: authHeader
-        });
-        const data = await res.json();
-        if (data.favorites) {
-          const favIds = data.favorites.map(item => item.item_id);
-          setFavoriteIds(favIds);
-        }
+        const data = await favoritesAPI.getFavorites();
+        const favIds = data.favorites.map(item => item.item_id);
+        setFavoriteIds(favIds);
       } catch (err) {
         console.error('Error fetching favorites:', err);
       }
@@ -148,6 +152,18 @@ const HomePage = ({
       fetchFavorites();
     }
   }, [isLoggedIn]);
+
+
+  // 🔁 Mark favorite items after favorites fetched
+  useEffect(() => {
+    if (favoriteIds.length && items.length) {
+      const updatedItems = items.map(item => ({
+        ...item,
+        isFavorite: favoriteIds.includes(item.item_id)
+      }));
+      setItems(updatedItems);
+    }
+  }, [favoriteIds]);
 
   let filteredItems = items.filter(item =>
     item.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -160,6 +176,7 @@ const HomePage = ({
       favoriteIds.includes(item.item_id)
     );
   }
+
 
   const styles = {
     modal: {
