@@ -9,10 +9,11 @@ const PurchasePage = () => {
   const [selectedCreditCard, setSelectedCreditCard] = useState('');
   const [message, setMessage] = useState('');
   const [orderHistory, setOrderHistory] = useState([]);
+  const [newCreditCard, setNewCreditCard] = useState('');
+  const [newAddress, setNewAddress] = useState('');
 
   const token = localStorage.getItem('accessToken');
   const tokenType = localStorage.getItem('tokenType');
-
   const authHeader = token && tokenType ? { Authorization: `${tokenType} ${token}` } : {};
 
   useEffect(() => {
@@ -57,7 +58,7 @@ const PurchasePage = () => {
           selected_address: selectedAddress,
           selected_credit_card: selectedCreditCard
         },
-        { headers: authHeader } // 🛡 burada da ekledik
+        { headers: authHeader }
       );
       setMessage(response.data.message);
       fetchCartItems();
@@ -68,12 +69,29 @@ const PurchasePage = () => {
     }
   };
 
+  const handleAddCreditCard = async () => {
+    try {
+      await axios.post('http://localhost:8000/api/add-credit-card', { value: newCreditCard }, { headers: authHeader });
+      setNewCreditCard('');
+      fetchUserDropdownData();
+    } catch (err) {
+      console.error("Failed to add credit card:", err);
+    }
+  };
+
+  const handleAddAddress = async () => {
+    try {
+      await axios.post('http://localhost:8000/api/add-address', { value: newAddress }, { headers: authHeader });
+      setNewAddress('');
+      fetchUserDropdownData();
+    } catch (err) {
+      console.error("Failed to add address:", err);
+    }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", padding: "20px" }}>
-      {/* Upper part: Cart and Purchase */}
       <div style={{ display: "flex", justifyContent: "space-between" }}>
-        
-        {/* Cart Content */}
         <div style={{ width: "45%" }}>
           <h2>Cart Content</h2>
           {cartItems.length === 0 ? (
@@ -87,7 +105,6 @@ const PurchasePage = () => {
           )}
         </div>
 
-        {/* Purchase Section */}
         <div style={{ width: "45%" }}>
           <h2>Complete Your Order</h2>
           <div>
@@ -98,6 +115,15 @@ const PurchasePage = () => {
                 <option key={idx} value={addr}>{addr}</option>
               ))}
             </select>
+            <div style={{ marginTop: "10px" }}>
+              <input
+                type="text"
+                placeholder="New address"
+                value={newAddress}
+                onChange={(e) => setNewAddress(e.target.value)}
+              />
+              <button onClick={handleAddAddress}>Add Address</button>
+            </div>
           </div>
 
           <div style={{ marginTop: "20px" }}>
@@ -108,6 +134,15 @@ const PurchasePage = () => {
                 <option key={idx} value={card}>{card}</option>
               ))}
             </select>
+            <div style={{ marginTop: "10px" }}>
+              <input
+                type="text"
+                placeholder="New credit card"
+                value={newCreditCard}
+                onChange={(e) => setNewCreditCard(e.target.value)}
+              />
+              <button onClick={handleAddCreditCard}>Add Credit Card</button>
+            </div>
           </div>
 
           <button
@@ -124,7 +159,6 @@ const PurchasePage = () => {
         </div>
       </div>
 
-      {/* Order History Section */}
       <div style={{ marginTop: "40px" }}>
         <h2>Order History</h2>
         {orderHistory.length === 0 ? (
