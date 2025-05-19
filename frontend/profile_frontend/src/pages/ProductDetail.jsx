@@ -12,6 +12,7 @@ const ProductDetail = () => {
   const [rating, setRating] = useState('');
   const [comment, setComment] = useState('');
   const [sellerFeedbacks, setSellerFeedbacks] = useState([]);
+  const [isFavorite, setIsFavorite] = useState(false); // favorilenmis mi kontrolü
 
   useEffect(() => {
     const fetchData = async () => {
@@ -19,7 +20,20 @@ const ProductDetail = () => {
         const token = localStorage.getItem('accessToken');
         if (token) {
           setIsLoggedIn(true);
-        } else {
+                  // ürün favorilerde mi değil mi diye kontrol etme
+          const favoritesRes = await fetch("http://127.0.0.1:8000/api/favorites", {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+
+          const favoritesData = await favoritesRes.json();
+          const favIds = favoritesData.favorites.map(f => f.item_id);
+          setIsFavorite(favIds.includes(itemId));
+
+        } 
+        
+        else {
           setIsLoggedIn(false);
         }
   
@@ -61,29 +75,35 @@ const ProductDetail = () => {
   
 
   const handleAddToFavorites = async () => {
+    const token = localStorage.getItem('accessToken');
+    const tokenType = localStorage.getItem('tokenType');
+
     if (!isLoggedIn) {
-      alert('Please login to add favorites.');
+      alert('Please login to manage favorites.');
       navigate('/login');
       return;
     }
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/favorites/${itemId}`, {
-        method: 'POST',
+      const url = `http://127.0.0.1:8000/api/favorites/${itemId}`;
+      const options = {
+        method: isFavorite ? 'DELETE' : 'POST',
         headers: {
-          Authorization: `${localStorage.getItem('tokenType')} ${localStorage.getItem('accessToken')}`
-
+          Authorization: `${tokenType} ${token}`
         }
-      });
+      };
+
+      const response = await fetch(url, options);
 
       if (response.ok) {
-        alert('Added to favorites!');
+        setIsFavorite(!isFavorite);
+        alert(isFavorite ? 'Removed from favorites' : 'Added to favorites');
       } else {
-        alert('Failed to add to favorites.');
+        alert('Failed to update favorites.');
       }
     } catch (error) {
-      console.error('Error adding to favorites:', error);
-      alert('Error adding to favorites.');
+      console.error('Error updating favorites:', error);
+      alert('Error updating favorites.');
     }
   };
 
@@ -171,7 +191,10 @@ const ProductDetail = () => {
       <p><b>Returnable:</b> {product.returnable ? 'Yes' : 'No'}</p>
 
       <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-        <button onClick={handleAddToFavorites} style={styles.buttonSecondary}>Add to Favorites</button>
+        <button onClick={handleAddToFavorites} style={styles.buttonSecondary}> 
+          {isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+        </button>
+
         <button onClick={() => handleAddToBasket(product.item_id)} style={styles.buttonPrimary}>Add to Basket</button>
       </div>
 
