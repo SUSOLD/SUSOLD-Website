@@ -167,7 +167,7 @@ const PurchasePage = () => {
           <ul>
             {orderHistory.map((item, index) => (
               <li key={index}>
-                {item.item_name} - Status: {item.isSold}
+                {item.title} - Status: {item.isSold}
               </li>
             ))}
           </ul>
