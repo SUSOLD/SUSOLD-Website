@@ -18,13 +18,30 @@ const CategoryMenu = ({
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
   
-  // Product form state
+  // Product form state with all required fields from ProductCreate model
   const [productForm, setProductForm] = useState({
     title: '',
-    description: '',
+    category: '',
+    sub_category: '',
+    brand: '',
+    price: 0, // Set default price to 0
     condition: 'New',
+    age: 0,
+    course: '',
+    dorm: false,
+    verified: false,
+    warranty_status: '',
+    inStock: true,
+    available_now: true,
+    isSold: 'stillInStock',
+    returnable: false,
+    description: '',
     image: null,
-    item_id: uuidv4()
+    item_id: uuidv4(),
+    user_id: '',
+    discount_rate: 0.0,
+    discounted_price: 0,
+    cost: 0
   });
   
   const [imagePreview, setImagePreview] = useState(null);
@@ -56,11 +73,29 @@ const CategoryMenu = ({
   
   // Handle product form changes
   const handleProductFormChange = (e) => {
-    const { name, value } = e.target;
-    setProductForm({
-      ...productForm,
-      [name]: value
-    });
+    const { name, value, type, checked } = e.target;
+    
+    // For checkbox inputs, use the checked property
+    if (type === 'checkbox') {
+      setProductForm({
+        ...productForm,
+        [name]: checked
+      });
+    } 
+    // For number inputs, convert to appropriate type
+    else if (type === 'number') {
+      setProductForm({
+        ...productForm,
+        [name]: parseFloat(value) || 0
+      });
+    } 
+    // For all other inputs
+    else {
+      setProductForm({
+        ...productForm,
+        [name]: value
+      });
+    }
   };
   
   // Handle image upload
@@ -88,11 +123,15 @@ const CategoryMenu = ({
     setSubmitError('');
     
     try {
-      // Send product to API (price will default to 0 in backend)
-      await addProduct({
+      // Ensure price and category are set correctly
+      const productData = {
         ...productForm,
-        category: selectedCategory
-      });
+        category: selectedCategory,
+        price: 0 // Ensure price is 0
+      };
+      
+      // Send product to API
+      await addProduct(productData);
       
       setSubmitSuccess(true);
       
@@ -114,9 +153,23 @@ const CategoryMenu = ({
     'New',
     'Like New',
     'Very Good',
+    'Excellent',
     'Good',
     'Acceptable',
     'Poor'
+  ];
+
+  const warrantyStatusOptions = [
+    '',
+    'Under Warranty',
+    'Expired',
+    'None'
+  ];
+
+  const isSoldOptions = [
+    'stillInStock',
+    'sold',
+    'reserved'
   ];
 
   return (
@@ -229,10 +282,10 @@ const CategoryMenu = ({
         </div>
       )}
       
-      {/* Add Product Modal */}
+      {/* Add Product Modal - Updated with all required fields */}
       {showAddProduct && (
         <div style={styles.modalOverlay}>
-          <div style={{...styles.modal, width: '450px', maxWidth: '90vw'}}>
+          <div style={{...styles.modal, width: '550px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto'}}>
             <h3 style={{marginTop: 0}}>Add Product to {selectedCategory}</h3>
             
             {submitSuccess ? (
@@ -251,88 +304,254 @@ const CategoryMenu = ({
                   </div>
                 )}
                 
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Product Title*</label>
-                  <input
-                    type="text"
-                    name="title"
-                    value={productForm.title}
-                    onChange={handleProductFormChange}
-                    style={styles.input}
-                    required
-                  />
-                </div>
-                
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Description*</label>
-                  <textarea
-                    name="description"
-                    value={productForm.description}
-                    onChange={handleProductFormChange}
-                    style={{...styles.input, minHeight: '80px', resize: 'vertical'}}
-                    required
-                  />
-                </div>
-                
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Condition*</label>
-                  <select
-                    name="condition"
-                    value={productForm.condition}
-                    onChange={handleProductFormChange}
-                    style={styles.input}
-                    required
-                  >
-                    {conditionOptions.map(option => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Category</label>
-                  <input
-                    type="text"
-                    value={selectedCategory}
-                    style={{...styles.input, backgroundColor: '#f0f0f0'}}
-                    disabled
-                  />
-                </div>
-                
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Product Image</label>
-                  {imagePreview ? (
-                    <div style={styles.imagePreviewContainer}>
-                      <img 
-                        src={imagePreview} 
-                        alt="Preview" 
-                        style={styles.imagePreview} 
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setImagePreview(null);
-                          setProductForm({...productForm, image: null});
-                        }}
-                        style={styles.removeImageButton}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={styles.imageUploadContainer}>
+                <div style={styles.formColumns}>
+                  {/* Left Column */}
+                  <div style={styles.formColumn}>
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Product Title*</label>
                       <input
-                        type="file"
-                        id="productImage"
-                        onChange={handleImageChange}
-                        style={styles.fileInput}
-                        accept="image/*"
+                        type="text"
+                        name="title"
+                        value={productForm.title}
+                        onChange={handleProductFormChange}
+                        style={styles.input}
+                        required
                       />
-                      <label htmlFor="productImage" style={styles.fileInputLabel}>
-                        Choose Image
-                      </label>
                     </div>
-                  )}
+                    
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Category</label>
+                      <input
+                        type="text"
+                        value={selectedCategory}
+                        style={{...styles.input, backgroundColor: '#f0f0f0'}}
+                        disabled
+                      />
+                    </div>
+                    
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Sub Category</label>
+                      <input
+                        type="text"
+                        name="sub_category"
+                        value={productForm.sub_category}
+                        onChange={handleProductFormChange}
+                        style={styles.input}
+                      />
+                    </div>
+                    
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Brand*</label>
+                      <input
+                        type="text"
+                        name="brand"
+                        value={productForm.brand}
+                        onChange={handleProductFormChange}
+                        style={styles.input}
+                        required
+                      />
+                    </div>
+                    
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Price</label>
+                      <input
+                        type="number"
+                        value={0}
+                        style={{...styles.input, backgroundColor: '#f0f0f0'}}
+                        disabled
+                      />
+                      <small style={styles.helpText}>Price will be set by Sales Manager</small>
+                    </div>
+                    
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Condition*</label>
+                      <select
+                        name="condition"
+                        value={productForm.condition}
+                        onChange={handleProductFormChange}
+                        style={styles.input}
+                        required
+                      >
+                        {conditionOptions.map(option => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Age (years)*</label>
+                      <input
+                        type="number"
+                        name="age"
+                        value={productForm.age}
+                        onChange={handleProductFormChange}
+                        style={styles.input}
+                        min="0"
+                        required
+                      />
+                    </div>
+                    
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Course</label>
+                      <input
+                        type="text"
+                        name="course"
+                        value={productForm.course}
+                        onChange={handleProductFormChange}
+                        style={styles.input}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Right Column */}
+                  <div style={styles.formColumn}>
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Description*</label>
+                      <textarea
+                        name="description"
+                        value={productForm.description}
+                        onChange={handleProductFormChange}
+                        style={{...styles.input, minHeight: '80px', resize: 'vertical'}}
+                        required
+                      />
+                    </div>
+                    
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Warranty Status</label>
+                      <select
+                        name="warranty_status"
+                        value={productForm.warranty_status}
+                        onChange={handleProductFormChange}
+                        style={styles.input}
+                      >
+                        {warrantyStatusOptions.map(option => (
+                          <option key={option} value={option}>{option || 'Select Status'}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Sale Status</label>
+                      <select
+                        name="isSold"
+                        value={productForm.isSold}
+                        onChange={handleProductFormChange}
+                        style={styles.input}
+                      >
+                        {isSoldOptions.map(option => (
+                          <option key={option} value={option}>
+                            {option === 'stillInStock' ? 'In Stock' : 
+                             option === 'sold' ? 'Sold' : 'Reserved'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div style={styles.checkboxGroup}>
+                      <label style={{...styles.label, marginBottom: '10px'}}>Additional Options</label>
+                      
+                      <div style={styles.checkboxItem}>
+                        <input
+                          type="checkbox"
+                          name="dorm"
+                          checked={productForm.dorm}
+                          onChange={handleProductFormChange}
+                          id="dorm"
+                        />
+                        <label htmlFor="dorm" style={styles.checkboxLabel}>
+                          Available in Dorm
+                        </label>
+                      </div>
+                      
+                      <div style={styles.checkboxItem}>
+                        <input
+                          type="checkbox"
+                          name="verified"
+                          checked={productForm.verified}
+                          onChange={handleProductFormChange}
+                          id="verified"
+                        />
+                        <label htmlFor="verified" style={styles.checkboxLabel}>
+                          Verified Product
+                        </label>
+                      </div>
+                      
+                      <div style={styles.checkboxItem}>
+                        <input
+                          type="checkbox"
+                          name="inStock"
+                          checked={productForm.inStock}
+                          onChange={handleProductFormChange}
+                          id="inStock"
+                        />
+                        <label htmlFor="inStock" style={styles.checkboxLabel}>
+                          In Stock
+                        </label>
+                      </div>
+                      
+                      <div style={styles.checkboxItem}>
+                        <input
+                          type="checkbox"
+                          name="available_now"
+                          checked={productForm.available_now}
+                          onChange={handleProductFormChange}
+                          id="available_now"
+                        />
+                        <label htmlFor="available_now" style={styles.checkboxLabel}>
+                          Available Now
+                        </label>
+                      </div>
+                      
+                      <div style={styles.checkboxItem}>
+                        <input
+                          type="checkbox"
+                          name="returnable"
+                          checked={productForm.returnable}
+                          onChange={handleProductFormChange}
+                          id="returnable"
+                        />
+                        <label htmlFor="returnable" style={styles.checkboxLabel}>
+                          Returnable
+                        </label>
+                      </div>
+                    </div>
+                    
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Product Image</label>
+                      {imagePreview ? (
+                        <div style={styles.imagePreviewContainer}>
+                          <img 
+                            src={imagePreview} 
+                            alt="Preview" 
+                            style={styles.imagePreview} 
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setImagePreview(null);
+                              setProductForm({...productForm, image: null});
+                            }}
+                            style={styles.removeImageButton}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={styles.imageUploadContainer}>
+                          <input
+                            type="file"
+                            id="productImage"
+                            onChange={handleImageChange}
+                            style={styles.fileInput}
+                            accept="image/*"
+                          />
+                          <label htmlFor="productImage" style={styles.fileInputLabel}>
+                            Choose Image
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 
                 <div style={styles.buttonContainer}>
@@ -423,7 +642,7 @@ const styles = {
   input: {
     width: '100%',
     padding: '10px',
-    marginBottom: '15px',
+    marginBottom: '5px',
     borderRadius: '8px',
     border: '1px solid #ccc',
     fontSize: '14px',
@@ -432,7 +651,8 @@ const styles = {
   buttonContainer: {
     display: 'flex',
     justifyContent: 'space-between',
-    gap: '10px'
+    gap: '10px',
+    marginTop: '15px'
   },
   buttonPrimary: {
     backgroundColor: '#28a745',
@@ -455,14 +675,28 @@ const styles = {
     fontSize: '14px'
   },
   // New styles for Add Product modal
+  formColumns: {
+    display: 'flex',
+    gap: '20px',
+    flexWrap: 'wrap'
+  },
+  formColumn: {
+    flex: '1 1 250px',
+  },
   formGroup: {
-    marginBottom: '15px',
+    marginBottom: '12px',
   },
   label: {
     display: 'block',
-    marginBottom: '5px',
+    marginBottom: '3px',
     fontSize: '14px',
     fontWeight: 'bold',
+  },
+  helpText: {
+    fontSize: '12px',
+    color: '#6c757d',
+    marginTop: '2px',
+    display: 'block'
   },
   errorMessage: {
     backgroundColor: '#f8d7da',
@@ -539,6 +773,19 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     fontSize: '16px',
+    cursor: 'pointer',
+  },
+  checkboxGroup: {
+    marginBottom: '15px',
+  },
+  checkboxItem: {
+    display: 'flex',
+    alignItems: 'center',
+    marginBottom: '8px',
+  },
+  checkboxLabel: {
+    fontSize: '14px',
+    marginLeft: '8px',
     cursor: 'pointer',
   }
 };
