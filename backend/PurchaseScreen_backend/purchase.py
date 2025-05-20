@@ -95,7 +95,7 @@ async def get_cart_items(current_user: dict = Depends(get_current_user)):
 
 @router.get("/user-dropdown-data", response_model=UserDropdownData)
 async def get_user_dropdown_data(current_user: dict = Depends(get_current_user)):
-    from database import users_collection  # import here if not already at the top
+    ##from database import users_collection  # import here if not already at the top
 
     # Find the full user document from the DB
     user = await users_collection.find_one({"user_id": current_user["user_id"]})
