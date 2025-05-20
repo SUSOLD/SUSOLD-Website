@@ -14,6 +14,10 @@ const ProductDetail = () => {
   const [sellerFeedbacks, setSellerFeedbacks] = useState([]);
   const [isFavorite, setIsFavorite] = useState(false); // favorilenmis mi kontrolü
   const [isSalesManager, setIsSalesManager] = useState(false);
+  const [isManager, setIsManager] = useState(false);
+
+  
+
 
 
 
@@ -27,7 +31,18 @@ const ProductDetail = () => {
         if (token && tokenType) {
           setIsLoggedIn(true);
 
-          // ✅ Check if user is a sales manager
+          const managerRes = await fetch("http://127.0.0.1:8000/api/is_manager", {
+            headers: {
+              Authorization: `${tokenType} ${token}`
+            }
+          });
+          const managerData = await managerRes.json();
+          setIsManager(managerData.is_manager);
+
+
+          
+
+          //  Check if user is a sales manager
           const salesManagerRes = await fetch("http://127.0.0.1:8000/api/is_sales_manager", {
             headers: {
               Authorization: `${tokenType} ${token}`
@@ -143,6 +158,35 @@ const ProductDetail = () => {
       }
     }
   };
+
+  const handleDeleteItem = async () => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this item?");
+    if (!confirmDelete) return;
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      const tokenType = localStorage.getItem('tokenType');
+
+      const res = await fetch(`http://127.0.0.1:8000/api/home/${product.item_id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `${tokenType} ${token}`
+        }
+      });
+
+      if (res.ok) {
+        alert("Item deleted successfully.");
+        navigate("/");  // redirect to homepage
+      } else {
+        const err = await res.json();
+        alert(`Failed to delete item: ${err.detail}`);
+      }
+    } catch (err) {
+      console.error("Error deleting item:", err);
+      alert("An error occurred.");
+    }
+  };
+
 
   const handleSetDiscount = async () => {
     const token = localStorage.getItem('accessToken');
@@ -289,13 +333,22 @@ const ProductDetail = () => {
           </button>
         )}
 
-        
+      {isManager && (
+        <button onClick={handleDeleteItem} style={{ ...styles.buttonPrimary, backgroundColor: 'red' }}>
+          Delete the item
+        </button>
+      )}
+
+
         <button onClick={handleAddToFavorites} style={styles.buttonSecondary}> 
           {isFavorite ? "Remove from Favorites" : "Add to Favorites"}
         </button>
 
         <button onClick={() => handleAddToBasket(product.item_id)} style={styles.buttonPrimary}>Add to Basket</button>
       </div>
+
+
+
 
       {/* ✅ Delivered ürünler için yorum gönderme formu */}
       {isDelivered && (
