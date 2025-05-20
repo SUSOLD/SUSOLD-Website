@@ -324,3 +324,11 @@ export const getBasketLocal = () => {
 export const clearBasketLocal = () => {
   localStorage.removeItem('basket');
 };
+
+
+export const salesAPI = {
+  setDiscount: (itemId, rate) => api.post(`/home/set-discount/${itemId}`, null, { params: { discount_rate: rate } }),
+  getSalesSummary: (start, end) => api.get(`/home/sales-summary`, { params: { start_date: start, end_date: end } })
+};
+
+

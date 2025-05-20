@@ -13,55 +13,67 @@ const ProductDetail = () => {
   const [comment, setComment] = useState('');
   const [sellerFeedbacks, setSellerFeedbacks] = useState([]);
   const [isFavorite, setIsFavorite] = useState(false); // favorilenmis mi kontrolü
+  const [isSalesManager, setIsSalesManager] = useState(false);
+
+
+
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('accessToken');
-        if (token) {
+        const tokenType = localStorage.getItem('tokenType');
+
+        if (token && tokenType) {
           setIsLoggedIn(true);
-                  // ürün favorilerde mi değil mi diye kontrol etme
-          const favoritesRes = await fetch("http://127.0.0.1:8000/api/favorites", {
+
+          // ✅ Check if user is a sales manager
+          const salesManagerRes = await fetch("http://127.0.0.1:8000/api/is_sales_manager", {
             headers: {
-              Authorization: `Bearer ${token}`
+              Authorization: `${tokenType} ${token}`
             }
           });
+          const salesManagerData = await salesManagerRes.json();
+          setIsSalesManager(salesManagerData.is_sales_manager);
 
+          // ✅ Check if product is in user's favorites
+          const favoritesRes = await fetch("http://127.0.0.1:8000/api/favorites", {
+            headers: {
+              Authorization: `${tokenType} ${token}`
+            }
+          });
           const favoritesData = await favoritesRes.json();
           const favIds = favoritesData.favorites.map(f => f.item_id);
           setIsFavorite(favIds.includes(itemId));
-
-        } 
-        
-        else {
+        } else {
           setIsLoggedIn(false);
         }
-  
-        // Ürün bilgisi çekiliyor
+
+        // ✅ Fetch product info
         const productRes = await fetch(`http://127.0.0.1:8000/api/home/item/${itemId}`);
         const productData = await productRes.json();
         setProduct(productData);
-  
-        // Ürün geldikten sonra: Satıcının feedbackleri çekiliyor
+
+        // ✅ Fetch seller feedbacks
         if (productData.user_id) {
           const feedbackRes = await fetch(`http://127.0.0.1:8000/api/seller_feedbacks?seller_id=${productData.user_id}`);
           const feedbackData = await feedbackRes.json();
           setSellerFeedbacks(feedbackData.feedbacks_received || []);
         }
-  
-        // Eğer login olduysak: ürün delivered mı diye kontrol ediliyor
-        if (token) {
+
+        // ✅ Check if product was delivered
+        if (token && tokenType) {
           const isDeliveredRes = await fetch(`http://127.0.0.1:8000/api/is_delivered?item_id=${itemId}`, {
             headers: {
-              Authorization: `Bearer ${token}`
+              Authorization: `${tokenType} ${token}`
             }
           });
-  
+
           if (isDeliveredRes.status === 401) {
             console.warn('Unauthorized to check delivery status.');
             return;
           }
-  
+
           const isDeliveredData = await isDeliveredRes.json();
           setIsDelivered(isDeliveredData === true);
         }
@@ -69,9 +81,12 @@ const ProductDetail = () => {
         console.error('Error during fetching data:', err);
       }
     };
-  
+
     fetchData();
   }, [itemId]);
+
+
+
   
 
   const handleAddToFavorites = async () => {
@@ -129,6 +144,38 @@ const ProductDetail = () => {
     }
   };
 
+  const handleSetDiscount = async () => {
+    const token = localStorage.getItem('accessToken');
+    const tokenType = localStorage.getItem('tokenType');
+
+    if (!discountRate || isNaN(discountRate)) {
+      alert('Please enter a valid discount rate (e.g., 0.2 for 20%)');
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/home/set-discount/${product.item_id}?discount_rate=${discountRate}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `${tokenType} ${token}`
+        }
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        setShowDiscountForm(false);
+        setDiscountRate('');
+      } else {
+        alert(data.detail || "Failed to apply discount");
+      }
+    } catch (error) {
+      console.error('Error applying discount:', error);
+      alert('Error applying discount.');
+    }
+  };
+
+
   // ✅ Yorum gönderme fonksiyonu
   const handleSubmitFeedback = async () => {
     if (!rating && !comment.trim()) {
@@ -179,7 +226,15 @@ const ProductDetail = () => {
       <h2>{product.title}</h2>
       <img src={product.image} alt={product.title} style={{ width: '200px' }} />
       <p><b>Description:</b> {product.description}</p>
-      <p><b>Price:</b> {product.price} TL</p>
+      {product.discounted_price && product.discounted_price < product.price ? (
+        <p>
+          <b>Price:</b> <span style={{ textDecoration: 'line-through' }}>{product.price} TL</span>{' '}
+          <span style={{ color: 'green', fontWeight: 'bold' }}>{product.discounted_price} TL</span>
+        </p>
+      ) : (
+        <p><b>Price:</b> {product.price} TL</p>
+      )}
+
       <p><b>Condition:</b> {product.condition}</p>
       <p><b>Stock Status:</b> {product.inStock ? "In Stock" : "Out of Stock"}</p>
       <p><b>Brand:</b> {product.brand}</p>
@@ -190,7 +245,51 @@ const ProductDetail = () => {
       <p><b>Verified:</b> {product.verified ? 'Yes' : 'No'}</p>
       <p><b>Returnable:</b> {product.returnable ? 'Yes' : 'No'}</p>
 
+
+
       <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+        {isSalesManager && (
+          <button
+            style={styles.buttonPrimary}
+            onClick={async () => {
+              const discountStr = prompt("Enter discount rate (e.g., 0.2 for 20%):");
+              const rate = parseFloat(discountStr);
+
+              if (isNaN(rate) || rate <= 0 || rate >= 1) {
+                alert("Invalid discount rate. Please enter a value between 0 and 1.");
+                return;
+              }
+
+              try {
+                const token = localStorage.getItem('accessToken');
+                const tokenType = localStorage.getItem('tokenType');
+                const res = await fetch(`http://127.0.0.1:8000/api/home/set-discount/${product.item_id}?discount_rate=${rate}`, {
+                  method: "POST",
+                  headers: {
+                    Authorization: `${tokenType} ${token}`
+                  }
+                });
+                const result = await res.json();
+                if (res.ok) {
+                  alert(result.message);
+                  // Refresh product to show discounted price
+                  const refreshed = await fetch(`http://127.0.0.1:8000/api/home/item/${itemId}`);
+                  const updatedProduct = await refreshed.json();
+                  setProduct(updatedProduct);
+                } else {
+                  alert(result.detail || "Failed to apply discount.");
+                }
+              } catch (err) {
+                console.error("Error applying discount:", err);
+                alert("Something went wrong.");
+              }
+            }}
+          >
+            Set Discount
+          </button>
+        )}
+
+        
         <button onClick={handleAddToFavorites} style={styles.buttonSecondary}> 
           {isFavorite ? "Remove from Favorites" : "Add to Favorites"}
         </button>

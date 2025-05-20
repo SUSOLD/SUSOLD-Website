@@ -58,5 +58,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         "user_id": user["user_id"],  # Make sure user_id is included in the returned dictionary
         "credit_cards": user.get("credit_cards", []),   # ✅ Eklendi
         "addresses": user.get("addresses", []),        # ✅ Eklendi
-        "isManager": user.get("isManager", False)
+        "isManager": user.get("isManager", False),
+        "isSalesManager": user.get("isSalesManager", False)
+        
     }

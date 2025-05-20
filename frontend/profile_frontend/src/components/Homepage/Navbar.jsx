@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const Navbar = ({ setSearchTerm }) => {
+const Navbar = ({ setSearchTerm, isSalesManager, setShowStatsPanel }) => {
   const navigate = useNavigate();
 
   return (
@@ -16,6 +16,9 @@ const Navbar = ({ setSearchTerm }) => {
       <div style={styles.navIcons}>
         <span onClick={() => navigate('/profile')} style={styles.navLink}>👤 Profile</span>
         <span onClick={() => navigate('/basket')} style={styles.navLink}>🛒 Basket</span>
+        {isSalesManager && (
+          <span onClick={() => setShowStatsPanel(true)} style={styles.navLink}>📊 Stats</span>
+        )}
       </div>
     </header>
   );
@@ -23,27 +26,27 @@ const Navbar = ({ setSearchTerm }) => {
 
 const styles = {
   navbar: {
-    display: 'flex', 
-    justifyContent: 'space-between', 
-    padding: 10, 
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: 10,
     backgroundColor: '#3366FF'
   },
   logo: {
-    fontWeight: 'bold', 
+    fontWeight: 'bold',
     fontSize: 18
   },
   search: {
-    flex: 1, 
+    flex: 1,
     margin: '0 10px'
   },
   navIcons: {
-    display: 'flex', 
+    display: 'flex',
     gap: '10px'
   },
   navLink: {
     cursor: 'pointer',
     textDecoration: 'underline',
-    color: '#FFFFFF' // ✅ burada gri rengi verdik
+    color: '#FFFFFF'
   }
 };
 
