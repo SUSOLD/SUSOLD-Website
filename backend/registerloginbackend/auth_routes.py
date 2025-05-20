@@ -17,6 +17,13 @@ async def generate_unique_user_id():
         existing_user = await users_collection.find_one({"user_id": user_id})
         if not existing_user:
             return user_id
+        
+async def generate_tax_id():
+    while True:
+        tax_id = str(random.randint(10000000000, 99999999999))
+        existing_user = await users_collection.find_one({"tax_id": tax_id})
+        if not existing_user:
+            return tax_id
 
 
 @auth_router.post("/register")
@@ -33,6 +40,8 @@ async def register(user: UserRegisterModel):
     
     # Generate a unique user ID
     user_data["user_id"] = await generate_unique_user_id()
+
+    user_data["tax_id"] = await generate_tax_id()
     
     # Add all the default values that are in the User model but not in UserRegisterModel
     user_data["isVerified"] = False

@@ -148,6 +148,28 @@ async def update_user_info(update_data: UserUpdate, current_user: dict = Depends
     return {"message": "User information updated successfully"}
 
 
+@main_router.get("/users/me/info")
+async def get_my_user_info(current_user: dict = Depends(get_current_user)):
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "name": user["name"],
+        "lastname": user["lastname"],
+        "email": user["email"],
+        "photo": user.get("photo", []),
+        "isVerified": user.get("isVerified", False),
+        "rating": user.get("rating", 0.0),
+        "rate_number": user.get("rate_number", 0),
+        "user_id": user["user_id"],
+        "isManager": user.get("isManager", False),
+        "isSalesManager": user.get("isSalesManager", False),
+        "tax_id": user.get("tax_id", "N/A"),
+        "credit_cards": user.get("credit_cards", []),
+        "addresses": user.get("addresses", [])
+    }
+
 # ---------------------------------------------------------------------------------------------
 #                                       OTHER USER METHODS
 # ---------------------------------------------------------------------------------------------

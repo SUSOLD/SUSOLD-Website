@@ -62,6 +62,7 @@ class User(BaseModel):
 
     isVerified: bool = False
     user_id: str                          # we will generate this!!!
+    tax_id: str
 
     rating: float = 0.0
     rate_number: int = 0
