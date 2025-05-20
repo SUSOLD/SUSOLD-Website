@@ -1,5 +1,5 @@
 // frontend/pages/AddProduct.jsx
-import React, { useState } from 'react';
+import React, { useState , useEffect } from 'react';
 import { ArrowLeft, Upload, Package } from 'lucide-react';
 import { addProduct } from '../services/apiService';
 import { useNavigate } from 'react-router-dom';
@@ -7,12 +7,13 @@ import { useNavigate } from 'react-router-dom';
 const AddProduct = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
     category: '',
     sub_category: '',
     brand: '',
-    price: '',
+    price: 0,
     condition: 'New',
     age: 0,
     course: '',
@@ -28,12 +29,33 @@ const AddProduct = () => {
   });
   const [previewImage, setPreviewImage] = useState(null);
 
+    // Kategorileri yüklemek için useEffect ekleyin
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/categories');
+        const data = await response.json();
+        if (data.categories) {
+          // "All" kategorisini filtreleyin (sadece gerçek kategorileri istiyoruz)
+          const productCategories = data.categories.filter(cat => cat !== 'All');
+          setCategories(productCategories);
+          console.log("Loaded categories:", productCategories); // Debug için
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+    
+    fetchCategories();
+  }, []);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name === 'price') return;
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : 
-              (name === 'price' || name === 'age') ? Number(value) : value
+              ( name === 'age') ? Number(value) : value
     }));
   };
 
@@ -60,7 +82,7 @@ const AddProduct = () => {
       const productData = {
         ...formData,
         item_id: `item${randomId}`,
-        price: Number(formData.price),
+        price: 0,
         age: Number(formData.age),
         // Ensure isSold is set to stillInStock for new products
         isSold: 'stillInStock'
@@ -156,12 +178,23 @@ const AddProduct = () => {
                   required
                 >
                   <option value="">Select Category</option>
-                  <option value="Electronics">Electronics</option>
-                  <option value="Books">Books</option>
-                  <option value="Clothing">Clothing</option>
-                  <option value="Furniture">Furniture</option>
-                  <option value="Sports">Sports</option>
-                  <option value="Others">Others</option>
+                  {/* Statik kategoriler yerine dinamik kategoriler kullanın */}
+                  {categories.map((category, index) => (
+                    <option key={index} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                  {/* Yedek olarak sabit kategorileri de ekleyebilirsiniz */}
+                  {categories.length === 0 && (
+                    <>
+                      <option value="Electronics">Electronics</option>
+                      <option value="Books">Books</option>
+                      <option value="Clothing">Clothing</option>
+                      <option value="Furniture">Furniture</option>
+                      <option value="Sports">Sports</option>
+                      <option value="Others">Others</option>
+                    </>
+                  )}
                 </select>
               </div>
               <div>
@@ -206,17 +239,15 @@ const AddProduct = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Price (₺)*</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Price (₺)</label>
                 <input 
                   type="number" 
                   name="price"
-                  value={formData.price}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                  min="0"
-                  step="0.01"
+                  value={0}
+                  disabled={true}
+                  className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md cursor-not-allowed"
                 />
+                <p className="text-xs text-gray-500 mt-1">Price is set by sales managers</p>
               </div>
             </div>
 
