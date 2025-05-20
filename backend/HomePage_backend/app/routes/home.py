@@ -236,10 +236,11 @@ async def delete_product(item_id: str, current_user: dict = Depends(get_current_
 
 
 #------discount method ---------
-
 @router.post("/home/set-discount/{item_id}")
 async def set_discount(item_id: str, discount_rate: float = Query(...), current_user: dict = Depends(get_current_user)):
-    if not current_user.get("isSalesManager", False):
+    # 🔁 Get the full user from DB, because JWT doesn't include isSalesManager
+    user = await users_collection.find_one({"user_id": current_user["user_id"]})
+    if not user or not user.get("isSalesManager", False):
         raise HTTPException(status_code=403, detail="Only sales managers can set discounts.")
 
     product = await item_collection.find_one({"item_id": item_id})
@@ -262,6 +263,7 @@ async def set_discount(item_id: str, discount_rate: float = Query(...), current_
         await send_discount_email(user["email"], product["title"], old_price, discounted_price)
 
     return {"message": f"Discount applied. New price: {discounted_price} TL"}
+
 
 
 #------ sales summary method -------

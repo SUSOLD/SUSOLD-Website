@@ -48,13 +48,29 @@ const ProductList = ({ items, searchTerm, activeTab, activeCategory, isLoggedIn 
             <p style={{ color: item.inStock ? 'green' : 'red', fontWeight: 'bold' }}>
               {item.inStock ? 'In Stock' : 'Out of Stock'}
             </p>
-            <p>{item.price} TL</p>
+            
+            {/* If item has discount, show discounted + original price */}
+            {item.discounted_price ? (
+              <>
+                <p style={{ textDecoration: 'line-through', color: 'gray' }}>
+                  {item.price} TL
+                </p>
+                <p style={{ color: 'green', fontWeight: 'bold' }}>
+                  {item.discounted_price} TL
+                </p>
+                <p style={{ color: 'orange', fontWeight: 'bold' }}>🔥 Discount</p>
+              </>
+            ) : (
+              <p>{item.price} TL</p>
+            )}
 
             {item.isFavorite && (
               <p style={{ color: 'red', fontWeight: 'bold' }}>💖 Favorited</p>
             )}
           </div>
         ))}
+
+      
       </div>
     </section>
   );

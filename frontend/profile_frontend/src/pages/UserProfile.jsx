@@ -462,6 +462,79 @@ const handleSetPrice = async (itemId) => {
             )}
           </div>
         );
+        case 'comments':
+          return (
+            <div className="grid grid-cols-1 gap-4">
+              {userData.comments.length > 0 ? (
+                userData.comments.map((comment) => (
+                  <div key={comment.id} className="bg-white rounded-lg shadow-md p-4">
+                    <div className="flex items-center mb-2">
+                      {renderStars(comment.rating)}
+                    </div>
+                    <p className="text-gray-700">{comment.comment}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full text-center py-8 bg-white rounded-lg shadow-sm">
+                  <MessageSquare size={40} className="text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500">No comments yet.</p>
+                </div>
+              )}
+            </div>
+          );
+          
+        case 'unapprovedComments':
+          return (
+            <div className="grid grid-cols-1 gap-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-800">Comments Awaiting Approval</h2>
+              </div>
+              
+              {unapprovedComments.length > 0 ? (
+                unapprovedComments.map((comment) => (
+                  <div key={comment._id} className="bg-white rounded-lg shadow-md p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center">
+                        {comment.rating && renderStars(comment.rating)}
+                        {!comment.rating && <span className="text-gray-500 text-sm">No rating</span>}
+                      </div>
+                      <div className="flex space-x-2">
+                        <button 
+                          onClick={() => handleApproveComment(comment._id)}
+                          disabled={approvalLoading}
+                          className="bg-green-100 text-green-700 p-2 rounded-md hover:bg-green-200 transition flex items-center"
+                        >
+                          <ThumbsUp size={16} className="mr-1" />
+                          Approve
+                        </button>
+                        <button 
+                          onClick={() => handleRemoveComment(comment._id)}
+                          disabled={approvalLoading}
+                          className="bg-red-100 text-red-700 p-2 rounded-md hover:bg-red-200 transition flex items-center"
+                        >
+                          <X size={16} className="mr-1" />
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                      <p className="text-gray-700">{comment.comment}</p>
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
+                      <p>From user: {comment.sender_id}</p>
+                      <p>To user: {comment.receiver_id}</p>
+                      {comment.item && <p>Product: {comment.item}</p>}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full text-center py-8 bg-white rounded-lg shadow-sm">
+                  <AlertTriangle size={40} className="text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500">No comments awaiting approval.</p>
+                </div>
+              )}
+            </div>
+          );
         case 'purchases':
           return (
             <div className="grid grid-cols-1 gap-6">
@@ -1042,6 +1115,20 @@ const handleSetPrice = async (itemId) => {
                 Manage Orders
               </button>
             )}
+            {/* Yönetici ise "Unapproved Comments" sekmesini göster */}
+            {userData.isManager && (
+              <button
+                onClick={() => setActiveTab('unapprovedComments')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
+                  activeTab === 'unapprovedComments'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <AlertTriangle size={18} className="mr-2" />
+                Unapproved Comments
+              </button>
+            )}
 
             {/* Sales Manager sekmeleri */}
             {userData.isSalesManager && (
@@ -1072,6 +1159,7 @@ const handleSetPrice = async (itemId) => {
             )}
           </nav>
         </div>
+        
 
         {renderTabContent()}
       </main>

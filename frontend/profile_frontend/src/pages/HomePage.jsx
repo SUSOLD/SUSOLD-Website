@@ -5,6 +5,8 @@ import MainCarousel from '../components/Homepage/MainCarousel';
 import TabMenu from '../components/Homepage/TabMenu';
 import ProductList from '../components/Homepage/ProductList';
 import { favoritesAPI } from '../services/apiService';
+import StatsPanel from './StatsPanel';
+
 
 
 const token = localStorage.getItem('accessToken');
@@ -29,6 +31,8 @@ const HomePage = ({
   const [showSortFilter, setShowSortFilter] = useState(false);
   const [categories, setCategories] = useState(['All']);
   const [isManager, setIsManager] = useState(false);
+  const [isSalesManager, setIsSalesManager] = useState(false);   
+  const [showStatsPanel, setShowStatsPanel] = useState(false);
 
   const conditionPriority = {
     "New": 4,
@@ -62,6 +66,19 @@ const HomePage = ({
       console.error('Error checking manager status:', error);
     }
   };
+
+  const checkIfSalesManager = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/is_sales_manager', {
+        headers: authHeader
+      });
+      const data = await response.json();
+      setIsSalesManager(data.is_sales_manager);
+    } catch (error) {
+      console.error('Error checking sales manager status:', error);
+    }
+  };
+
 
   const addNewCategory = async (categoryName) => {
     try {
@@ -132,6 +149,7 @@ const HomePage = ({
     fetchCategories();
     if (isLoggedIn) {
       checkIfManager();
+      checkIfSalesManager();
     }
   }, [isLoggedIn]);
 
@@ -211,7 +229,9 @@ const HomePage = ({
 
   return (
     <div>
-      <Navbar setSearchTerm={setSearchTerm} />
+      <Navbar setSearchTerm={setSearchTerm} isSalesManager={isSalesManager} setShowStatsPanel={setShowStatsPanel} />
+
+
       <CategoryMenu
         activeCategory={activeCategory}
         setActiveCategory={setActiveCategory}
@@ -230,6 +250,9 @@ const HomePage = ({
         activeCategory={activeCategory}
         isLoggedIn={isLoggedIn}
       />
+
+      {showStatsPanel && <StatsPanel onClose={() => setShowStatsPanel(false)} />}
+
 
       {showSortFilter && (
         <div style={styles.modal}>

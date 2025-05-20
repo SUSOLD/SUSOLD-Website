@@ -53,19 +53,42 @@ export const removeProduct = async (productId) => {
 };
 
 export const addProduct = async (productData) => {
+  // Make sure all required fields from ProductCreate model are included
+  const requiredFields = [
+    'title', 'category', 'brand', 'condition', 'age', 'description', 'item_id'
+  ];
+  
+  // Check if all required fields are present
+  for (const field of requiredFields) {
+    if (!productData[field] && field !== 'price') {
+      throw new Error(`Missing required field: ${field}`);
+    }
+  }
+  
+  // Ensure price is set to 0
+  const updatedProductData = {
+    ...productData,
+    price: 0
+  };
+  
   // If we have an actual file, we need to use FormData
-  if (productData.image instanceof File) {
+  if (updatedProductData.image instanceof File) {
     const formData = new FormData();
     
     // Add all other fields to the form data
-    Object.keys(productData).forEach(key => {
+    Object.keys(updatedProductData).forEach(key => {
       if (key !== 'image') {
-        formData.append(key, productData[key]);
+        // Handle boolean values
+        if (typeof updatedProductData[key] === 'boolean') {
+          formData.append(key, updatedProductData[key].toString());
+        } else {
+          formData.append(key, updatedProductData[key]);
+        }
       }
     });
     
     // Add the image file last
-    formData.append('image', productData.image);
+    formData.append('image', updatedProductData.image);
     
     return await api.post('/home/', formData, {
       headers: {
@@ -75,7 +98,7 @@ export const addProduct = async (productData) => {
   } 
   // Otherwise, just send the data as JSON
   else {
-    return await api.post('/home/', productData);
+    return await api.post('/home/', updatedProductData);
   }
 };
 
@@ -324,3 +347,11 @@ export const getBasketLocal = () => {
 export const clearBasketLocal = () => {
   localStorage.removeItem('basket');
 };
+
+
+export const salesAPI = {
+  setDiscount: (itemId, rate) => api.post(`/home/set-discount/${itemId}`, null, { params: { discount_rate: rate } }),
+  getSalesSummary: (start, end) => api.get(`/home/sales-summary`, { params: { start_date: start, end_date: end } })
+};
+
+
