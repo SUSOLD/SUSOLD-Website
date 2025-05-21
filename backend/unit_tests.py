@@ -7,7 +7,7 @@ from bson import ObjectId
 from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 from main import app  # Assuming your FastAPI app is in main.py
-from UserProfile_backend.model import FeedbackInput, UserUpdate  # Adjust imports to your structure
+from backend.UserProfile_backend.model import FeedbackInput, UserUpdate  # Adjust imports to your structure
 
 client = TestClient(app)
 

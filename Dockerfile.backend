@@ -1,0 +1,29 @@
+FROM python:3.9-slim
+
+# Ana dizini çalışma dizini olarak ayarlıyoruz
+WORKDIR /app
+
+# ReportLab, Cryptography ve diğer paketler için gerekli C kütüphaneleri yüklüyoruz
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libffi-dev \
+    libssl-dev \
+    libfreetype6-dev \
+    python3-tk \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pip ve setuptools'u güncelleyelim
+RUN pip install --upgrade pip setuptools wheel
+
+# Gerekli paketleri kopyalayıp yüklüyoruz
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# backend klasörünü kopyalıyoruz
+COPY backend/ ./backend/
+
+# API'yi 8000 portunda çalıştırıyoruz
+EXPOSE 8000
+
+# backend.main modülünü çalıştırıyoruz
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,0 +1,34 @@
+version: '3'
+
+services:
+  backend:
+    build: 
+      context: .  # Ana dizinimiz build context
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URL=mongodb://host.docker.internal:27017/cs308
+    networks:
+      - susold-network
+    volumes:
+      - ./backend:/app/backend  
+
+  frontend:
+    build:
+      context: ./frontend/profile_frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - susold-network
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+    volumes:
+      - ./frontend/profile_frontend:/app
+      - /app/node_modules
+      
+networks:
+  susold-network:
+    driver: bridge
