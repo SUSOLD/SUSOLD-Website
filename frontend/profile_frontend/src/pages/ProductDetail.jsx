@@ -376,9 +376,7 @@ const ProductDetail = () => {
                 } 
                 
                 else {
-                  const refreshed = await fetch(`http://127.0.0.1:8000/api/home/item/${itemId}`);
-                  const updatedProduct = await refreshed.json();
-                  setProduct(updatedProduct);
+                  navigate('/');
                 }
               } 
               
