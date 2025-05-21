@@ -39,6 +39,8 @@ const ProductDetail = () => {
           const managerData = await managerRes.json();
           setIsManager(managerData.is_manager);
 
+    
+
 
           
 
@@ -346,6 +348,52 @@ const ProductDetail = () => {
 
         <button onClick={() => handleAddToBasket(product.item_id)} style={styles.buttonPrimary}>Add to Basket</button>
       </div>
+
+
+      {isManager && (
+        <div style={{ marginTop: '20px' }}>
+          <p><b>Stock Management:</b> {product.inStock ? "In Stock" : "Out of Stock"}</p>
+          <button
+            onClick={async () => {
+              const token = localStorage.getItem('accessToken');
+              const tokenType = localStorage.getItem('tokenType');
+              try {
+                const res = await fetch(`http://127.0.0.1:8000/api/change-stock-status?item_id=${product.item_id}&in_stock=${!product.inStock}`, {
+                  method: "PATCH",
+                  headers: {
+                    Authorization: `${tokenType} ${token}`
+                  }
+                });
+
+                const data = await res.json();
+                alert(data.message);
+
+                // Refresh view to reflect the change
+                if (data.new_item_id) {
+                  alert("Product restocked successfully!");
+                  navigate('/');
+
+                } 
+                
+                else {
+                  const refreshed = await fetch(`http://127.0.0.1:8000/api/home/item/${itemId}`);
+                  const updatedProduct = await refreshed.json();
+                  setProduct(updatedProduct);
+                }
+              } 
+              
+              
+              catch (err) {
+                console.error("Stock update error:", err);
+                alert("Failed to update stock.");
+              }
+            }}
+            style={{ ...styles.buttonPrimary, backgroundColor: product.inStock ? '#dc3545' : '#28a745' }}
+          >
+            {product.inStock ? "Mark as Out of Stock" : "Restock Product"}
+          </button>
+        </div>
+      )}
 
 
 
