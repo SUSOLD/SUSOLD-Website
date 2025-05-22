@@ -1,5 +1,4 @@
 from io import BytesIO
-from tkinter import Canvas
 from bson import ObjectId
 from fastapi import APIRouter, Query, HTTPException, Depends
 from typing import Optional
@@ -11,6 +10,13 @@ import smtplib
 from email.mime.text import MIMEText
 from email.message import EmailMessage
 from fastapi.responses import StreamingResponse
+from starlette.responses import Response
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
+from email.mime.text import MIMEText
+from io import BytesIO
+from reportlab.pdfgen import canvas
 
 
 router = APIRouter()
@@ -374,7 +380,7 @@ async def download_invoice_pdf(order_id: str, current_user: dict = Depends(get_c
 
     # Generate PDF in memory
     pdf_buffer = BytesIO()
-    p = Canvas.Canvas(pdf_buffer)
+    p = canvas.Canvas(pdf_buffer)
     text_object = p.beginText(40, 800)
     for line in message.split("\n"):
         text_object.textLine(line)
